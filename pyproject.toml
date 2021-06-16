@@ -1,21 +1,26 @@
 [tool.poetry]
-name = "moleCad"
+name = "molecad"
 version = "0.1.0"
-description = ""
+description = "download molecules using pubchem api"
 authors = ["vvrubel <vasilyeva1510@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+requests = "^2.25.1"
+isort = "^5.8.0"
+black = "^21.6b0"
+mypy = "^0.902"
+pubchempy = "^1.0.4"
+loguru = "^0.5.3"
+pydantic = "^1.8.2"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.4"
 
 [[tool.poetry.source]]
 name = "biocad"
 url = "https://pypi.net.biocad.ru"
 secondary = true
-
-[tool.poetry.dependencies]
-python = "^3.8"
-requests = "^2.25.1"
-pubchempy = "^1.0.4"
-
-[tool.poetry.dev-dependencies]
-pytest = "^5.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

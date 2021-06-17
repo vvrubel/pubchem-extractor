@@ -1,6 +1,4 @@
-import argparse
 import requests
-import sys
 import time
 from typing import (
     Any,
@@ -22,7 +20,6 @@ from molecad.sample_sync_requests import (
 )
 
 T = TypeVar("T")
-EXAMPLE = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{id}/property/MolecularFormula,MolecularWeight,IUPACName,CanonicalSMILES/JSON"
 
 
 def join_w_comma(*args: object) -> str:
@@ -63,26 +60,22 @@ def prepare_request(
     return url
 
 
-def execute_request(url, params):
+def execute_request(url: str, params: dict[str, str]) -> dict[int, Any]:
     print(url)
     res = request_data_json(url, **params)
     return res
 
 
-def main(*args: Any):
-    # # parser = build_parser()
-    # # params = parser.parse_args(args)
-    # # print(params)
-    # # ids = params.ids # generate_ids()
-    # # chunks = chunked(ids, 2)
-    # # out_box = ["JSON", "XML", "SDF", "CSV", "PNG", "TXT"]
-
+def main(*args):
     domain = "compound"
     namespace = "cid"
     operation = "property"
     output = "JSON"
     tags = ["MolecularFormula", "MolecularWeight", "IUPACName", "CanonicalSMILES"]
     # additional_tags = ["InChI", "XLogP", "HBondDonorCount", "HBondAcceptorCount", "RotatableBondCount", "Volume3D"]
+    # out_box = ["JSON", "XML", "SDF", "CSV", "PNG", "TXT"]
+    # # parser = build_parser()
+    # # params = parser.parse_args(args)
 
     results = {}
     t_start = time.monotonic()
@@ -100,4 +93,4 @@ def main(*args: Any):
 
 
 if __name__ == '__main__':
-    main(*sys.argv[1:])
+    main()

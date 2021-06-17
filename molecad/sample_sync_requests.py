@@ -17,7 +17,8 @@ def generate_ids() -> Generator[int, None, None]:
     :return: CID's generator
     """
     n = 1
-    while True:
+    #TODO TEST stop generator n == 1000
+    while n <= 1000:
         yield n
         n += 1
 
@@ -61,7 +62,7 @@ def delay_iterations(iterable: Iterable[T], width: float, maxsize: int) -> Gener
             time.sleep(delay)
 
 
-def request_data_json(url: str, **params: str) -> Any:
+def request_data_json(url: str, **params: str) -> dict:
     """
     The function sends a synchronous request to the PUG REST service.
     The first argument is common to all PUG-REST requests, others require operation-specific options.

@@ -10,7 +10,7 @@ from molecad.sample_sync_requests import (
     generate_ids,
     request_data_json
 )
-from molecad.__main__ import (
+from molecad.main import (
     join_w_comma,
     prepare_request
 )
@@ -21,7 +21,6 @@ EXAMPLE2 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244/record/P
 EXAMPLE3 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1/property/MolecularFormula,MolecularWeight,IUPACName,CanonicalSMILES/JSON"
 EXAMPLE4 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1,2/property/MolecularFormula,MolecularWeight,IUPACName,CanonicalSMILES/JSON"
 BAD_EXAMPLE = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1/property/JSON"
-
 
 
 def test_version():

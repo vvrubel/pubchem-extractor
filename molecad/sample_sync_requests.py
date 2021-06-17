@@ -17,18 +17,21 @@ def generate_ids() -> Generator[int, None, None]:
     :return: CID's generator
     """
     n = 1
-    #TODO TEST stop generator n == 1000
-    while n <= 1000:
+    # TODO TEST stop generator n == 1000
+    while n <= 500000:
         yield n
         n += 1
 
 
-def chunked(iterable: Iterable[T], maxsize: int) -> Generator[List[T], None, None]:
+def chunked(
+        iterable: Iterable[T],
+        maxsize: int
+) -> Generator[List[T], None, None]:
     """
-    For faster requests it groups the CIDs into containers with definite size
-    :param iterable: generated CIDs
-    :param maxsize: size og the container
-    :return: containers with CIDs
+    For faster requests it groups the CIDs into containers with definite size.
+    :param iterable: generated CIDs.
+    :param maxsize: size og the container.
+    :return: containers with CIDs.
     """
     chunk = []
     for i in iterable:
@@ -38,7 +41,11 @@ def chunked(iterable: Iterable[T], maxsize: int) -> Generator[List[T], None, Non
             chunk = []
 
 
-def delay_iterations(iterable: Iterable[T], width: float, maxsize: int) -> Generator[T, None, None]:
+def delay_iterations(
+        iterable: Iterable[T],
+        width: float,
+        maxsize: int
+) -> Generator[T, None, None]:
     """
     Limitations:
     No more than five requests per second.
@@ -64,11 +71,12 @@ def delay_iterations(iterable: Iterable[T], width: float, maxsize: int) -> Gener
 
 def request_data_json(url: str, **params: str) -> dict:
     """
-    The function sends a synchronous request to the PUG REST service.
-    The first argument is common to all PUG-REST requests, others require operation-specific options.
-    The last can be provided as a dict using the `params` keyword arguments.
-    It takes the same result as you construct the URL by hands putting key/value pairs after the “?” mark
-    at the end of the URL path.
+    The function sends a synchronous request to the PUG REST service. The
+    first argument is common to all PUG-REST requests, others require
+    operation-specific options. The last can be provided as a dict using
+    the `params` keyword arguments. It takes the same result as you construct
+    the URL by hands putting key/value pairs after the “?” mark at the end of
+    the URL path.
     :param url: string value is returned from `build_url()` function
     :param params: dict of operation options as keys:value pairs
     :return: response in JSON format

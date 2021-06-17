@@ -1,7 +1,6 @@
 #project
-molecad.types_.py
-molecad.errors.py
-molecad.error_handler.py
+info/error.py
+info/error_handler.py
 info/
 
 # tmp

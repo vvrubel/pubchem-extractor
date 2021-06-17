@@ -25,8 +25,8 @@ T = TypeVar("T")
 def join_w_comma(*args: object) -> str:
     """
     Formats all iterable arguments to a string with comma.
-    :param args: object to indicate that a value could be any type in a typesafe manner
-    :return: string of comma-separated values without whitespaces
+    :param args: any arguments.
+    :return: string of comma-separated values without whitespaces.
     """
     return ",".join(map(str, args))
 
@@ -40,7 +40,9 @@ def prepare_request(
         property_tags: Optional[list] = None
 ) -> str:
     """
-    Prepares all arguments to be passed to URL builder. Mainly, joins all list arguments with comma to string.
+    Prepares all arguments to be passed to URL builder.
+    Mainly, joins all list arguments with comma to string.
+    # TODO
     :param domain:
     :param namespace:
     :param identifiers: yielded value from
@@ -79,14 +81,14 @@ def main(*args):
 
     results = {}
     t_start = time.monotonic()
-    for i in delay_iterations(generate_ids(), 60.0, 400):
-        url = prepare_request(domain, namespace, [i], operation, output, tags)
+    for i in delay_iterations(chunked(generate_ids(), 100), 60.0, 400):
+        url = prepare_request(domain, namespace, i, operation, output, tags)
         try:
             res = execute_request(url, {})
         except requests.HTTPError:
             break
         else:
-            results[i] = res
+            results[tuple(i)] = res
     t_stop = time.monotonic()
     t_run = t_stop - t_start
     print(t_run)

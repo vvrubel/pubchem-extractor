@@ -13,6 +13,7 @@ mypy = "^0.902"
 pubchempy = "^1.0.4"
 loguru = "^0.5.3"
 pydantic = "^1.8.2"
+flake8 = "^3.9.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"
@@ -21,6 +22,10 @@ pytest = "^6.2.4"
 name = "biocad"
 url = "https://pypi.net.biocad.ru"
 secondary = true
+
+[tool.black]
+line-length = 100
+target_version = ['py39']
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

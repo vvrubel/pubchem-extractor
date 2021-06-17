@@ -2,7 +2,7 @@
 info/error.py
 info/error_handler.py
 info/
-notebooks/
+
 
 # tmp
 __pycache__/

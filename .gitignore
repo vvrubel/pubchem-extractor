@@ -1,3 +1,9 @@
+#project
+molecad.types_.py
+molecad.errors.py
+molecad.error_handler.py
+info/
+
 # tmp
 __pycache__/
 *.py[cod]
@@ -24,9 +30,6 @@ dmypy.json
 # pycharm
 .idea
 .\.*~
-
-#project
-molecad.types_.py
 
 # Distribution / packaging
 .Python

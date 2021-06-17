@@ -1,6 +1,6 @@
 import pytest
 
-from molecad.sync_requests import *
+from molecad.sample_sync_requests import *
 from molecad import __version__
 
 

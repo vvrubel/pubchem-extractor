@@ -16,11 +16,20 @@ from molecad.main import (
 )
 from molecad import __version__
 
-EXAMPLE1 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244/property/MolecularFormula,InChIKey/JSON"
-EXAMPLE2 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244/record/PNG"
-EXAMPLE3 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1/property/MolecularFormula,MolecularWeight,IUPACName,CanonicalSMILES/JSON"
-EXAMPLE4 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1,2/property/MolecularFormula,MolecularWeight,IUPACName,CanonicalSMILES/JSON"
-BAD_EXAMPLE = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1/property/JSON"
+EXAMPLE1 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244" \
+           "/property/MolecularFormula,InChIKey/JSON"
+EXAMPLE2 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244" \
+           "/record/PNG"
+EXAMPLE3 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1" \
+           "/property/MolecularFormula,MolecularWeight,IUPACName," \
+           "CanonicalSMILES/JSON"
+EXAMPLE4 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1," \
+           "2/property/MolecularFormula,MolecularWeight,IUPACName," \
+           "CanonicalSMILES/JSON"
+EXAMPLE5 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244" \
+           "/record/PNG?image_size=large"
+BAD_EXAMPLE = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1" \
+              "/property/JSON"
 
 
 def test_version():
@@ -145,3 +154,8 @@ def test_prepare_request_chunk():
     output = "JSON"
     url = prepare_request(domain, namespace, identifiers[0], operation, output, tags)
     assert url == EXAMPLE4
+
+
+# TODO
+def test_namespace_concat():
+    pass

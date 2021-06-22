@@ -7,21 +7,18 @@ authors = ["vvrubel <vasilyeva1510@gmail.com>"]
 [tool.poetry.dependencies]
 python = "^3.9"
 requests = "^2.25.1"
-isort = "^5.8.0"
-black = "^21.6b0"
-mypy = "^0.902"
 pubchempy = "^1.0.4"
 loguru = "^0.5.3"
 pydantic = "^1.8.2"
 flake8 = "^3.9.2"
+typing-extensions = "^3.10.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"
-
-[[tool.poetry.source]]
-name = "biocad"
-url = "https://pypi.net.biocad.ru"
-secondary = true
+flake8 = "^3.9.2"
+isort = "^5.8.0"
+black = "^21.6b0"
+mypy = "^0.902"
 
 [tool.black]
 line-length = 100

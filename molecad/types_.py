@@ -1,10 +1,18 @@
 from enum import Enum
+from loguru import logger
+from requests.exceptions import HTTPError
 from typing import TypeVar
 
-from molecad.builder import *
 
 IdT = TypeVar("IdT", int, str)
 T = TypeVar("T")
+
+
+class MissingValue(TypeError):
+    def __init__(self, message: str = "") -> None:
+        super().__init__(message)
+        self.message = message
+        logger.error("Error occurred: {}", exc_info=True)
 
 
 class InputDomains(str, Enum):
@@ -13,29 +21,26 @@ class InputDomains(str, Enum):
     ASSAY = "assay"
 
 
-class NamespaceSearchSuffix(str, Enum):
-    SMILES = "smiles"
-    INCHI = "inchi"
-    SDF = "sdf"
+class InputNamespaces(str, Enum):
     CID = "cid"
+    SID = "sid"
+    AID = "aid"
+    NAME = "name"
+    SMILES = "smiles"
+    SDF = "sdf"
+    INCHI = "inchi"
+    INCHIKEY = "inchikey"
+    LISTKEY = "listkey"
+    FORMULA = "formula"
+    FAST_FORMULA = "fastformula"
+    # XREF = "xref"
 
 
-class StructureSearchPrefix(str, Enum):
+class SearchPrefix(str, Enum):
     SUBSTRUCTURE = "substructure"
     SUPERSTRUCTURE = "superstructure"
     SIMILARITY = "similarity"
     IDENTITY = "identity"
-
-
-class StructureSearchNamespace(str):
-    def __init__(self):
-        self.prefix = StructureSearchPrefix()
-        self.suffix = NamespaceSearchSuffix()
-        self.namespace = namespace_concat(prefix=self.prefix,
-                                          suffix=self.suffix)
-
-
-class FastSearchPrefix(str, Enum):
     FAST_IDENTITY = "fastidentity"
     FAST_SIMILARITY_2D = "fastsimilarity_2d"
     FAST_SIMILARITY_3D = "fastsimilarity_3d"
@@ -43,28 +48,11 @@ class FastSearchPrefix(str, Enum):
     FAST_SUPERSTRUCTURE = "fastsuperstructure"
 
 
-class GeneralInputNamespaces(str, Enum):
-    LISTKEY = "listkey"
-
-
-class CompoundInputNamespaces(str, Enum):
-    CID = "cid"
-    NAME = "name"
+class SearchSuffix(str, Enum):
     SMILES = "smiles"
     INCHI = "inchi"
     SDF = "sdf"
-    INCHIKEY = "inchikey"
-    FORMULA = "formula"
-    FAST_FORMULA = "fastformula"
-    XREF = "xref"
-
-
-class SubstanceInputNamespaces(str, Enum):
-    SID = "sid"
-
-
-class AssayInputNamespaces(str, Enum):
-    AID = "aid"
+    CID = "cid"
 
 
 class Operations(str, Enum):

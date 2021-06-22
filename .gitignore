@@ -1,7 +1,5 @@
 #project
-info/error.py
-info/error_handler.py
-info/
+info/*
 
 
 # tmp

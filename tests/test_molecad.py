@@ -1,35 +1,36 @@
 import pytest
 
+from molecad import __version__
 from molecad.builder import (
     build_url,
     input_specification,
-    operation_specification
+    join_w_comma,
+    joined_namespaces,
+    operation_specification,
+    prepare_request,
 )
 from molecad.sample_sync_requests import (
     chunked,
     generate_ids,
     request_data_json
 )
-from molecad.main import (
-    join_w_comma,
-    prepare_request
+from molecad.types_ import (
+    InputDomains,
+    InputNamespaces,
+    MissingValue,
+    Operations,
+    OutputFormats,
+    PropertyTags,
+    SearchPrefix,
+    SearchSuffix,
 )
-from molecad import __version__
 
-EXAMPLE1 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244" \
-           "/property/MolecularFormula,InChIKey/JSON"
-EXAMPLE2 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244" \
-           "/record/PNG"
-EXAMPLE3 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1" \
-           "/property/MolecularFormula,MolecularWeight,IUPACName," \
-           "CanonicalSMILES/JSON"
-EXAMPLE4 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1," \
-           "2/property/MolecularFormula,MolecularWeight,IUPACName," \
-           "CanonicalSMILES/JSON"
-EXAMPLE5 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244" \
-           "/record/PNG?image_size=large"
-BAD_EXAMPLE = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1" \
-              "/property/JSON"
+EXAMPLE1 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244/property/MolecularFormula,InChIKey/JSON"
+EXAMPLE2 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244/record/PNG"
+EXAMPLE3 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1/property/MolecularFormula,MolecularWeight,IUPACName,CanonicalSMILES/JSON"
+EXAMPLE4 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1,2/property/MolecularFormula,MolecularWeight,IUPACName,CanonicalSMILES/JSON"
+EXAMPLE5 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244/record/PNG?image_size=large"
+BAD_EXAMPLE = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1/property/JSON"
 
 
 def test_version():
@@ -39,11 +40,25 @@ def test_version():
 @pytest.mark.parametrize("inp, expect", [
     ([1, 2, 3], "1,2,3"),
     ([1], "1"),
-    ("1", "1"),
+    #("1", "1"),
 ])
 def test_join_w_comma(inp, expect):
     res = join_w_comma(*inp)
     assert res == expect
+
+
+def test_namespace_concatinator_w_suffix():
+    prefix = SearchPrefix.IDENTITY
+    suffix = SearchSuffix.CID
+    res = joined_namespaces(prefix, suffix)
+    assert res == "identity/cid"
+
+
+# def test_namespace_concatinator():
+#     prefix = SearchPrefix.IDENTITY
+#     suffix = None
+#     with pytest.raises(MissingValue) as missing:
+#         res = namespace_concatinator(prefix, suffix)
 
 
 def test_input_spec():
@@ -111,13 +126,13 @@ def test_request_data_json():
 
 def test_generate_ids():
     ids = []
-    ids.extend(generate_ids())
+    ids.extend(generate_ids(1, 11))
     expectation = [int(i) for i in range(1, 11)]
     assert ids == expectation
 
 
 def test_chunked():
-    ids = generate_ids()
+    ids = generate_ids(1, 11)
     chunks = []
     chunks.extend(chunked(ids, 2))
     assert chunks == [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]]
@@ -126,7 +141,7 @@ def test_chunked():
 def test_prepare_request():
     domain = "compound"
     namespace = "cid"
-    identifiers = (1,)
+    identifiers = [1]
     operation = "property"
     output = "JSON"
     url = prepare_request(domain, namespace, identifiers, operation, output)
@@ -134,28 +149,46 @@ def test_prepare_request():
 
 
 def test_prepare_request_w_tags():
-    domain = "compound"
-    namespace = "cid"
+    domain = InputDomains.COMPOUND
+    namespace = InputNamespaces.CID
     identifiers = (1,)
-    operation = "property"
-    tags = ["MolecularFormula", "MolecularWeight", "IUPACName", "CanonicalSMILES"]
-    output = "JSON"
-    url = prepare_request(domain, namespace, identifiers, operation, output, tags)
+    operation = Operations.PROPERTY
+    tags = (
+        PropertyTags.MOLECULAR_FORMULA,
+        PropertyTags.MOLECULAR_WEIGHT,
+        PropertyTags.IUPAC_NAME,
+        PropertyTags.CANONICAL_SMILES,
+    )
+    output = OutputFormats.JSON
+    url = prepare_request(
+        domain,
+        namespace,
+        identifiers,
+        operation,
+        output,
+        tags)
     assert url == EXAMPLE3
 
 
 def test_prepare_request_chunk():
-    domain = "compound"
-    namespace = "cid"
-    identifiers = []
-    identifiers.extend(chunked(generate_ids(), 2))
-    operation = "property"
-    tags = ["MolecularFormula", "MolecularWeight", "IUPACName", "CanonicalSMILES"]
-    output = "JSON"
-    url = prepare_request(domain, namespace, identifiers[0], operation, output, tags)
-    assert url == EXAMPLE4
-
-
-# TODO
-def test_namespace_concat():
-    pass
+    domain = InputDomains.COMPOUND
+    namespace = InputNamespaces.CID
+    ids = generate_ids(1, 3)
+    operation = Operations.PROPERTY
+    tags = (
+        PropertyTags.MOLECULAR_FORMULA,
+        PropertyTags.MOLECULAR_WEIGHT,
+        PropertyTags.IUPAC_NAME,
+        PropertyTags.CANONICAL_SMILES,
+    )
+    output = OutputFormats.JSON
+    for chunk in chunked(ids, 2):
+        identifiers = chunk
+        url = prepare_request(
+            domain,
+            namespace,
+            identifiers,
+            operation,
+            output,
+            tags)
+        assert url == EXAMPLE4

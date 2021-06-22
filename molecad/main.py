@@ -4,7 +4,7 @@ import time
 import uuid
 from loguru import logger
 from pathlib import Path
-# from typing import Sequence
+from typing import Any
 
 from molecad.builder import (
     prepare_request
@@ -17,20 +17,31 @@ from molecad.sample_sync_requests import (
 )
 from molecad.types_ import (
     InputDomains,
-    CompoundInputNamespaces,
+    InputNamespaces,
     Operations,
     PropertyTags,
     OutputFormats,
 )
 
 
-def execute_request(url: str, params: dict[str, str]) -> dict[str, object]:
+def execute_request(url: str, params: dict[str, str]) -> dict[str, Any]:
+    """
+    Makes a request to PUG REST service.
+    :param url: requested URL.
+    :param params: operation specification.
+    :return: requested data in JSON format.
+    """
     logger.info("executing request {}", url)
     data = request_data_json(url, **params)
     return data
 
 
-def save_data_json(obj: dict[str, object]) -> Path:
+def save_data_json(obj: dict[int, Any]) -> Path:
+    """
+    Saves outputted json file.
+    :param obj: JSON object.
+    :return: path to json file.
+    """
     d_path = Path().resolve() / "downloaded"
     if not Path(d_path).exists():
         d_path.mkdir()
@@ -43,7 +54,7 @@ def save_data_json(obj: dict[str, object]) -> Path:
 
 def main():
     domain = InputDomains.COMPOUND
-    namespace = CompoundInputNamespaces.CID
+    namespace = InputNamespaces.CID
     operation = Operations.PROPERTY
     tags = (
         PropertyTags.MOLECULAR_FORMULA,
@@ -63,7 +74,8 @@ def main():
 
     results = {}
     t_start = time.monotonic()
-    for i in delay_iterations(chunked(generate_ids(), 100), 60.0, 400):
+    chunks = chunked(generate_ids(), 100)
+    for i in delay_iterations(chunks, 60.0, 400):
         url = prepare_request(domain, namespace, i, operation, output, tags)
         logger.debug("Requesting URL: {}", url)
         try:

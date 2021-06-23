@@ -64,7 +64,7 @@ def delay_iterations(
         t = time.monotonic()
         window.append(t)
         while t - waiting_time > window[0]:
-            del window[0]
+            window.pop(0)
         if len(window) > maxsize:
             t0 = window[0]
             delay = t - t0
@@ -73,12 +73,12 @@ def delay_iterations(
 
 def request_data_json(url: str, **params: str) -> Dict[str, Any]:
     """
-    he function sends a synchronous "GET" request to the PUG REST service.
+    Function sends a synchronous "GET" request to the PUG REST service.
     The first argument - ``url``, is common to requests; the additional
     arguments are required for some operation-specific options.
     If you were constructing the URL by hand, this data would be given as
     ``key:value`` pairs in the URL after a ``?`` mark at the end.
-    :param url: string value was returned from ``build_url()`` function.
+    :param url: string value returned from ``build_url()`` function.
     :param params: operation specification as a dict with string keys and
     values.
     :return: response in JSON format.

@@ -96,7 +96,7 @@ def build_url(
     :param operation_spec: the operation to be performed with the passed
     identifiers.
     :param output_format: describes the format of the output.
-    :return: string is used as an argument invoking ``request_data()`` function
+    :return: string which is used as an argument of ``request_data()`` function
     call.
     """
     base = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"

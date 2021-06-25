@@ -1,6 +1,5 @@
 #project
-info/*
-
+data/*
 
 # tmp
 __pycache__/

@@ -5,24 +5,21 @@ from molecad.builder import (
     build_url,
     input_specification,
     join_w_comma,
-    joined_namespaces,
+    joined_namespace,
     operation_specification,
     prepare_request,
 )
-from molecad.sample_sync_requests import (
-    chunked,
-    generate_ids,
-    request_data_json
-)
+from molecad.downloader import *
 from molecad.types_ import (
-    InputDomains,
-    InputNamespaces,
-    MissingValue,
+    IdT,
+    Domain,
+    NamespaceComp,
     Operations,
-    OutputFormats,
+    Out,
     PropertyTags,
-    SearchPrefix,
     SearchSuffix,
+    WrongValue,
+    Xref
 )
 
 EXAMPLE1 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244/property/MolecularFormula,InChIKey/JSON"
@@ -40,70 +37,52 @@ def test_version():
 @pytest.mark.parametrize("inp, expect", [
     ([1, 2, 3], "1,2,3"),
     ([1], "1"),
-    #("1", "1"),
+    ("1", "1"),
 ])
 def test_join_w_comma(inp, expect):
     res = join_w_comma(*inp)
     assert res == expect
 
 
-def test_namespace_concatinator_w_suffix():
-    prefix = SearchPrefix.IDENTITY
-    suffix = SearchSuffix.CID
-    res = joined_namespaces(prefix, suffix)
-    assert res == "identity/cid"
+@pytest.mark.parametrize("pref, suf, expect", [
+    (NamespaceComp.CID, None, "cid"),
+    (NamespaceComp.IDENTITY, SearchSuffix.CID, "identity/cid"),
+    (NamespaceComp.XREF, Xref.PATENT_ID, "xref/PatentID"),
+])
+def test_only_prefix(pref, suf, expect):
+    res = joined_namespace(pref, suf)
+    assert res == expect
 
 
-# def test_namespace_concatinator():
-#     prefix = SearchPrefix.IDENTITY
-#     suffix = None
-#     with pytest.raises(MissingValue) as missing:
-#         res = namespace_concatinator(prefix, suffix)
+@pytest.mark.parametrize("domain, namespace, ids, expect", [
+    (Domain.COMPOUND.value, NamespaceComp.CID.search, 2244, "compound/cid/2244"),
+    (Domain.COMPOUND.value, NamespaceComp.CID.search, "1,2,3", "compound/cid/1,2,3"),
+    ("compound", NamespaceComp.CID.search, "1,2,3", "compound/cid/1,2,3"),
+    ("compound", "cid", "1,2,3", "compound/cid/1,2,3"),
+    (Domain.COMPOUND.value, "xref/PatentID", "EP0001699A2", "compound/xref/PatentID/EP0001699A2"),
+])
+def test_input_specification(domain, namespace, ids, expect):
+    res = input_specification(domain, namespace, ids)
+    assert res == expect
 
 
-def test_input_spec():
-    domain = "compound"
-    namespace = "cid"
-    identifiers = 2244
-    res = input_specification(domain, namespace, identifiers)
-    assert res == "compound/cid/2244"
+@pytest.mark.parametrize("op, tags, expect", [
+    ("record", None, "record"),
+    ("property", "MolecularFormula,InChIKey", "property/MolecularFormula,InChIKey"),
+])
+def test_operation_specification(op, tags, expect):
+    res = operation_specification(op, tags)
+    assert res == expect
 
 
-def test_input_spec_ids():
-    domain = "compound"
-    namespace = "cid"
-    identifiers = "1,2,3"
-    res = input_specification(domain, namespace, identifiers)
-    assert res == "compound/cid/1,2,3"
-
-
-def test_operation_spec():
-    operation = "record"
-    res = operation_specification(operation)
-    assert res == "record"
-
-
-def test_operation_spec_w_tags():
-    operation = "property"
-    tags = "MolecularFormula,InChIKey"
-    res = operation_specification(operation, tags)
-    assert res == "property/MolecularFormula,InChIKey"
-
-
-def test_build_url():
-    input_spec = "compound/cid/2244"
-    operation_spec = "record"
-    output = "PNG"
-    res = build_url(input_spec, operation_spec, output)
-    assert res == EXAMPLE2
-
-
-def test_build_url_w_tags():
-    input_spec = "compound/cid/2244"
-    operation_spec = "property/MolecularFormula,InChIKey"
-    output = "JSON"
-    res = build_url(input_spec, operation_spec, output)
-    assert res == EXAMPLE1
+@pytest.mark.parametrize("inp, op, out, expect", [
+    ("compound/cid/2244", "property/MolecularFormula,InChIKey", "JSON", EXAMPLE1),
+    ("compound/cid/2244", "record", "PNG", EXAMPLE2),
+    ("compound/cid/2244", Operations.RECORD.action, Out.PNG.value, EXAMPLE2),
+])
+def test_build_url(inp, op, out, expect):
+    res = build_url(inp, op, out)
+    assert res == expect
 
 
 def test_request_data_json():
@@ -146,49 +125,49 @@ def test_prepare_request():
     output = "JSON"
     url = prepare_request(domain, namespace, identifiers, operation, output)
     assert url == BAD_EXAMPLE
-
-
-def test_prepare_request_w_tags():
-    domain = InputDomains.COMPOUND
-    namespace = InputNamespaces.CID
-    identifiers = (1,)
-    operation = Operations.PROPERTY
-    tags = (
-        PropertyTags.MOLECULAR_FORMULA,
-        PropertyTags.MOLECULAR_WEIGHT,
-        PropertyTags.IUPAC_NAME,
-        PropertyTags.CANONICAL_SMILES,
-    )
-    output = OutputFormats.JSON
-    url = prepare_request(
-        domain,
-        namespace,
-        identifiers,
-        operation,
-        output,
-        tags)
-    assert url == EXAMPLE3
-
-
-def test_prepare_request_chunk():
-    domain = InputDomains.COMPOUND
-    namespace = InputNamespaces.CID
-    ids = generate_ids(1, 3)
-    operation = Operations.PROPERTY
-    tags = (
-        PropertyTags.MOLECULAR_FORMULA,
-        PropertyTags.MOLECULAR_WEIGHT,
-        PropertyTags.IUPAC_NAME,
-        PropertyTags.CANONICAL_SMILES,
-    )
-    output = OutputFormats.JSON
-    for chunk in chunked(ids, 2):
-        identifiers = chunk
-        url = prepare_request(
-            domain,
-            namespace,
-            identifiers,
-            operation,
-            output,
-            tags)
-        assert url == EXAMPLE4
+#
+#
+# def test_prepare_request_w_tags():
+#     domain = Domain.COMPOUND
+#     namespace = NamespaceComp.CID
+#     identifiers = (1,)
+#     operation = Operations.PROPERTY
+#     tags = (
+#         PropertyTags.MOLECULAR_FORMULA,
+#         PropertyTags.MOLECULAR_WEIGHT,
+#         PropertyTags.IUPAC_NAME,
+#         PropertyTags.CANONICAL_SMILES,
+#     )
+#     output = Out.JSON
+#     url = prepare_request(
+#         domain,
+#         namespace,
+#         identifiers,
+#         operation,
+#         output,
+#         tags)
+#     assert url == EXAMPLE3
+#
+#
+# def test_prepare_request_chunk():
+#     domain = Domain.COMPOUND
+#     namespace = NamespaceComp.CID
+#     ids = generate_ids(1, 3)
+#     operation = Operations.PROPERTY
+#     tags = (
+#         PropertyTags.MOLECULAR_FORMULA,
+#         PropertyTags.MOLECULAR_WEIGHT,
+#         PropertyTags.IUPAC_NAME,
+#         PropertyTags.CANONICAL_SMILES,
+#     )
+#     output = Out.JSON
+#     for chunk in chunked(ids, 2):
+#         identifiers = chunk
+#         url = prepare_request(
+#             domain,
+#             namespace,
+#             identifiers,
+#             operation,
+#             output,
+#             tags)
+#         assert url == EXAMPLE4

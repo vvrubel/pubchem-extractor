@@ -12,6 +12,8 @@ loguru = "^0.5.3"
 pydantic = "^1.8.2"
 flake8 = "^3.9.2"
 typing-extensions = "^3.10.0"
+click = "^8.0.1"
+fire = "^0.4.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"

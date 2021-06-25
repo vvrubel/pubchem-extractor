@@ -1,78 +1,93 @@
-from typing import Iterable, Optional, Sequence, Union
-
+from typing import (
+    Callable,
+    Iterable,
+    Optional,
+    Sequence,
+    Tuple,
+    Union
+)
 from molecad.types_ import (
     IdT,
-    InputDomains,
-    InputNamespaces,
-    MissingValue,
+    Domain,
+    NamespaceComp,
     Operations,
-    OutputFormats,
+    Out,
     PropertyTags,
-    SearchPrefix,
     SearchSuffix,
-    T
+    WrongValue,
+    Xref
 )
 
 
-def join_w_comma(*args: IdT) -> str:
+def join_w_comma(*args: Union[IdT, PropertyTags, Xref]) -> str:
     """
-    Formats all passed arguments from iterable to a string separated by commas
-    :param args: arguments mapped as a tuple
+    The function formats all passed arguments from iterable type to a
+    string, where ``args`` are separated by commas.
+    :param args: arguments mapped as a tuple.
     :return: string of comma-separated values without whitespaces.
     """
     return ",".join(f'{i}' for i in args)
 
 
-def joined_namespaces(
-        prefix: Union[str, SearchPrefix],
-        suffix: Optional[SearchSuffix]
+def joined_namespace(
+        prefix: NamespaceComp,
+        suffix: Union[SearchSuffix, Xref] = None
 ) -> str:
     """
-    Prepares namespace parts which are needed to be concatenated with "/".
-    :param prefix: value from ``structure search`` or  ``fast search``
-    namespace subclass.
-    :param suffix: if value is None, error must be raised.
-    :return: formatted a namespace is passed to ``input_specification``
+    The function prepares a complex namespace which parts are needed
+    to be concatenated with "/".
+    :param prefix: assigns the value from ``NamespaceComp.search``
+    :param suffix: if ``NamespaceComp.group`` == 0 -> ``suffix`` must be None,
+    if ``NamespaceComp.group`` == 1 -> ``suffix`` must be from ``SearchSuffix``
+    class, and if ``NamespaceComp.group`` == 2 -> ``suffix`` must be from
+    ``Xref`` class.
+    :return: string which will be passed to ``input_specification()``
     function call.
     """
-    if suffix is not None:
-        return f"{prefix}/{suffix}"
+    if prefix.group == 0 and suffix is None:
+        return f"{prefix.search}"
+    elif (prefix.group == 1 and isinstance(suffix, SearchSuffix)) or (
+            prefix.group == 2 and isinstance(suffix, Xref)):
+        return f"{prefix.search}/{suffix.value}"
     else:
-        raise MissingValue
+        raise WrongValue
 
 
 def input_specification(
-        domain: Union[str, InputDomains],
-        namespace: Union[str, InputNamespaces],
-        identifiers: str,
+        domain: Domain,
+        namespace: str,
+        identifiers: IdT
 ) -> str:
     """
-    This function will be used to format specified input parameters that
-    will be passed for building URL string.
-    :param domain: string value refers to database - compound | substance |
-    assay.
-    :param namespace: must be string and can assign values depending on the
-    domain. If value is complex, it passed from ``joined_namespaces``.
-    :param identifiers: passes from ``joined_identifiers``.
-    :return: string value that  is the first part of URL and formatted
-    as "<domain>/<namespace>/<identifiers>"
+    This function formats specified input parameters that will be passed for
+    building URL string.
+    :param domain: must be a string and refers to database - compound |
+    substance | assay.
+    :param namespace: must be a string and can assign values depending on the
+    domain. If value is complex, it passes from ``joined_namespaces()``.
+    :param identifiers: can be an integer or a string; the first one is
+    implemented if the search is performed by single numeric id, in this
+    case, the value also can be passed casted to string. In case number of
+    ids is more then one (sequence), it should be previously goes to
+    ``joined_identifiers()`` function.
+    :return: string value formatted as "<domain>/<namespace>/<identifiers>"
+    that is the first part of URL.
     """
     return f"{domain}/{namespace}/{identifiers}"
 
 
 def operation_specification(
-        operation: str,
-        tags: Optional[str] = None
+        operation: Operations,
+        tags: Optional[str]
 ) -> str:
     """
-    The function dictates what to do with the input records - what
-    information about them you want to retrieve. The function will be used
-    to format specified operation parameters that will be passed for
-    building URL string.
+    Dictates what to do with the input records - what information about it,
+    you want to retrieve.
+    The function formats the incoming parameters for further transmission to
+    the URL builder.
     :param operation: describes action to execute with input identifiers.
     :param tags: string of comma-separated values without whitespaces must
-    be passed, if only ``operation`` == "compound_property", "xrefs" or
-    "target_type".
+    be passed, if only ``operation`` == "compound_property" or "xrefs".
     :return: the value will be used in a ``build_url()`` function call as 
     the second argument.
     """
@@ -85,7 +100,7 @@ def operation_specification(
 def build_url(
         input_spec: str,
         operation_spec: str,
-        output_format: str
+        output_format: Out
 ) -> str:
     """
     The command generates the URL string which is necessary to make request
@@ -104,12 +119,13 @@ def build_url(
 
 
 def prepare_request(
-        domain: InputDomains,
-        namespace: Union[str, InputNamespaces],
+        domain: Domain,
+        nsp_pref: NamespaceComp,
         identifiers: list[IdT],
         operation: Operations,
-        output: OutputFormats,
-        tags: Optional[Sequence[PropertyTags]] = None
+        output: Out,
+        nsp_suf: Union[SearchSuffix, Xref] = None
+        tags: Union[list[PropertyTags], list[Xref]] = None
 ) -> str:
     """
     Prepares all arguments to be passed to URL builder.

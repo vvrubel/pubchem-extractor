@@ -1,37 +1,31 @@
-import json
 import requests
 import time
-import uuid
 from loguru import logger
-from pathlib import Path
 from typing import (
     Any,
     Dict,
     Generator,
     Iterable,
-    List,
     TypeVar
 )
 
 from molecad.builder import prepare_request
 from molecad.types_ import (
-    IdT,
     Domain,
-    NamespaceComp,
-    Operations,
+    NamespCmpdAlone,
+    OperationAlone,
+    OperationComplex,
     Out,
     PropertyTags,
-    SearchSuffix,
-    WrongValue,
-    Xref
 )
+from molecad.utils import save_data_json
 
 T = TypeVar("T")
 
 
 def generate_ids(
         start: int = 1,
-        stop: int = 101
+        stop: int = 201
 ) -> Generator[int, None, None]:
     """
     Simple generator of CID values.
@@ -47,7 +41,7 @@ def generate_ids(
 def chunked(
         iterable: Iterable[T],
         maxsize: int
-) -> Generator[List[T], None, None]:
+) -> Generator[list[T], None, None]:
     """
     Takes an iterable with definite type and divides it to chunks with equal
     size.
@@ -104,45 +98,15 @@ def request_data_json(url: str, **params: str) -> Dict[str, Any]:
     string type.
     :return: response in JSON format.
     """
-    response = requests.get(url, params=params)
-    data = response.json()
-    return data
-
-
-def execute_request(url: str, params: dict[str, str]) -> dict[str, Any]:
-    """
-    Executes a request to PUG REST service.
-    :param url: requested URL.
-    :param params: operation options.
-    :return: requested data in JSON format.
-    """
-    logger.info("executing request {}", url)
-    data = request_data_json(url, **params)
-    return data
-
-
-def save_data_json(obj: dict[int, Any], num: int = 0) -> Path:
-    """
-    Saves outputted json file.
-    :param obj: JSON object.
-    :param num: prefix for naming.
-    :return: path to json file.
-    """
-    d_path = Path().resolve() / "data" / "downloaded_files"
-    if not Path(d_path).exists():
-        d_path.mkdir()
-    name = str(num) + str(uuid.uuid4()) + ".json"
-    f_path = Path(d_path) / name
-    with open(f_path, "wt") as f:
-        json.dump(obj, f, indent=2)
-    return f_path
+    response = requests.get(url, params=params).json()
+    return response
 
 
 def main():
     domain = Domain.COMPOUND
-    namespace = NamespaceComp.CID
-    operation = Operations.PROPERTY
-    tags = (
+    namespace = NamespCmpdAlone.CID
+    operation = OperationComplex.PROPERTY
+    tags = [
         PropertyTags.MOLECULAR_FORMULA,
         PropertyTags.MOLECULAR_WEIGHT,
         PropertyTags.CANONICAL_SMILES,
@@ -155,31 +119,32 @@ def main():
         PropertyTags.ATOM_STEREO_COUNT,
         PropertyTags.BOND_STEREO_COUNT,
         PropertyTags.VOLUME_3D,
-    )
+    ]
     output = Out.JSON
 
-    # results = {}
+    results = {}
     t_start = time.monotonic()
     chunks = chunked(generate_ids(), 100)
     for i in delay_iterations(chunks, 60.0, 400):
         url = prepare_request(domain, namespace, i, operation, output, tags)
         logger.debug("Requesting URL: {}", url)
         try:
-            res = execute_request(url, {})
+            res = request_data_json(url)
         except requests.HTTPError:
             logger.error("Error occurred: {}", exc_info=True)
             break
         else:
             logger.debug("Response content: {}", res)
             for k, v in zip(i, res['PropertyTable']['Properties']):
-                file = save_data_json(v, k)
-                # results[k] = v
+                # file = save_data_json(v, k)
+                # logger.info("Data saved in {}", file)
+                results[k] = v
     t_stop = time.monotonic()
     t_run = t_stop - t_start
     logger.info("Download took {}", t_run)
 
-    # res_file = save_data_json(results)
-    logger.info("Data saved in {}", file)
+    res_file = save_data_json(results)
+    logger.info("Data saved in {}", res_file)
 
 
 if __name__ == '__main__':

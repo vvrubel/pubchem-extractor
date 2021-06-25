@@ -1,25 +1,17 @@
-from typing import (
-    Callable,
-    Iterable,
-    Optional,
-    Sequence,
-    Tuple,
-    Union
-)
+from typing import TypeVar, Union
 from molecad.types_ import (
-    IdT,
     Domain,
-    NamespaceComp,
-    Operations,
+    OperationAlone,
+    OperationComplex,
     Out,
     PropertyTags,
-    SearchSuffix,
-    WrongValue,
-    Xref
 )
 
+IdT = TypeVar("IdT", int, str)
+T = TypeVar("T")
 
-def join_w_comma(*args: Union[IdT, PropertyTags, Xref]) -> str:
+
+def join_w_comma(*args: list[T]) -> str:
     """
     The function formats all passed arguments from iterable type to a
     string, where ``args`` are separated by commas.
@@ -29,34 +21,10 @@ def join_w_comma(*args: Union[IdT, PropertyTags, Xref]) -> str:
     return ",".join(f'{i}' for i in args)
 
 
-def joined_namespace(
-        prefix: NamespaceComp,
-        suffix: Union[SearchSuffix, Xref] = None
-) -> str:
-    """
-    The function prepares a complex namespace which parts are needed
-    to be concatenated with "/".
-    :param prefix: assigns the value from ``NamespaceComp.search``
-    :param suffix: if ``NamespaceComp.group`` == 0 -> ``suffix`` must be None,
-    if ``NamespaceComp.group`` == 1 -> ``suffix`` must be from ``SearchSuffix``
-    class, and if ``NamespaceComp.group`` == 2 -> ``suffix`` must be from
-    ``Xref`` class.
-    :return: string which will be passed to ``input_specification()``
-    function call.
-    """
-    if prefix.group == 0 and suffix is None:
-        return f"{prefix.search}"
-    elif (prefix.group == 1 and isinstance(suffix, SearchSuffix)) or (
-            prefix.group == 2 and isinstance(suffix, Xref)):
-        return f"{prefix.search}/{suffix.value}"
-    else:
-        raise WrongValue
-
-
 def input_specification(
         domain: Domain,
         namespace: str,
-        identifiers: IdT
+        identifiers: str
 ) -> str:
     """
     This function formats specified input parameters that will be passed for
@@ -64,7 +32,8 @@ def input_specification(
     :param domain: must be a string and refers to database - compound |
     substance | assay.
     :param namespace: must be a string and can assign values depending on the
-    domain. If value is complex, it passes from ``joined_namespaces()``.
+    domain. If value is complex, it passes from ``joined_namespaces()``,
+    but now it is not implemented.
     :param identifiers: can be an integer or a string; the first one is
     implemented if the search is performed by single numeric id, in this
     case, the value also can be passed casted to string. In case number of
@@ -77,8 +46,8 @@ def input_specification(
 
 
 def operation_specification(
-        operation: Operations,
-        tags: Optional[str]
+        operation: Union[OperationAlone, OperationComplex],
+        tags: str = None
 ) -> str:
     """
     Dictates what to do with the input records - what information about it,
@@ -87,7 +56,7 @@ def operation_specification(
     the URL builder.
     :param operation: describes action to execute with input identifiers.
     :param tags: string of comma-separated values without whitespaces must
-    be passed, if only ``operation`` == "compound_property" or "xrefs".
+    be passed, if only ``operation`` == "compound_property" or //"xrefs".
     :return: the value will be used in a ``build_url()`` function call as 
     the second argument.
     """
@@ -120,12 +89,11 @@ def build_url(
 
 def prepare_request(
         domain: Domain,
-        nsp_pref: NamespaceComp,
+        namespace: str,
         identifiers: list[IdT],
-        operation: Operations,
+        operation: Union[OperationAlone, OperationComplex],
         output: Out,
-        nsp_suf: Union[SearchSuffix, Xref] = None
-        tags: Union[list[PropertyTags], list[Xref]] = None
+        tags: list[PropertyTags] = None
 ) -> str:
     """
     Prepares all arguments to be passed to URL builder.

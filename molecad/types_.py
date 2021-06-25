@@ -1,10 +1,5 @@
 from enum import Enum
 from loguru import logger
-from typing import TypeVar
-
-
-IdT = TypeVar("IdT", int, str)
-T = TypeVar("T")
 
 
 class WrongValue(ValueError, TypeError):
@@ -14,102 +9,72 @@ class WrongValue(ValueError, TypeError):
         logger.error("Error occurred: {}. Value is wrong.", exc_info=True)
 
 
-class Domain(Enum):
+class Domain(str, Enum):
     COMPOUND = "compound"
     SUBSTANCE = "substance"
     ASSAY = "assay"
 
 
-class NamespaceComp(Enum):
-    """
-    The class describes the namespaces that must be specified in input
-    specification. The value of class elements is a tuple containing the
-    type of search parameter (the first) and its group of the complexity (the
-    second). The second dictates if namespace has a suffix or not.
-    If ``group`` == 0, the result namespace value is a single word, else it
-    must has a suffix chosen from ``Xref`` or ``SearchSuffix`` classes.
-    """
-    CID = "cid", 0
-    NAME = "name", 0
-    SMILES = "smiles", 0
-    SDF = "sdf", 0
-    INCHI = "inchi", 0
-    INCHIKEY = "inchikey", 0
-    LISTKEY = "listkey", 0
-    FORMULA = "formula", 0
-    FAST_FORMULA = "fastformula", 0
-    SUBSTRUCTURE = "substructure", 1
-    SUPERSTRUCTURE = "superstructure", 1
-    SIMILARITY = "similarity", 1
-    IDENTITY = "identity", 1
-    FAST_IDENTITY = "fastidentity", 1
-    FAST_SIMILARITY_2D = "fastsimilarity_2d", 1
-    FAST_SIMILARITY_3D = "fastsimilarity_3d", 1
-    FAST_SUBSTRUCTURE = "fastsubstructure", 1
-    FAST_SUPERSTRUCTURE = "fastsuperstructure", 1
-    XREF = "xref", 2
-
-    def __init__(self, search: str, group: int) -> None:
-        self._search_ = search
-        self._group_ = group
-
-    @property
-    def search(self):
-        return self._search_
-
-    @property
-    def group(self):
-        return self._group_
+class NamespCmpdAlone(str, Enum):
+    CID = "cid"
+    NAME = "name"
+    SMILES = "smiles"
+    SDF = "sdf"
+    INCHI = "inchi"
+    INCHIKEY = "inchikey"
+    LISTKEY = "listkey"
+    FORMULA = "formula"
+    FAST_FORMULA = "fastformula"
+    REGISTRY_ID = "xref/RegistryID"
+    RN = "xref/RN"
+    PUBMED_ID = "xref/PubMedID"
+    MMDB_ID = "xref/MMDBID"
+    PROTEIN_GI = "xref/ProteinGI"
+    NUCLEOTIDE_GI = "xref/NucleotideGI"
+    TAXONOMY_ID = "xref/TaxonomyID"
+    MIM_ID = "xref/MIMID"
+    GENE_ID = "xref/GeneID"
+    PROBE_ID = "xref/ProbeID"
+    PATENT_ID = "xref/PatentID"
 
 
-class SearchSuffix(Enum):
+class SearchPrefix(str, Enum):
+    SUBSTRUCTURE = "substructure"
+    SUPERSTRUCTURE = "superstructure"
+    SIMILARITY = "similarity"
+    IDENTITY = "identity"
+    FAST_IDENTITY = "fastidentity"
+    FAST_SIMILARITY_2D = "fastsimilarity_2d"
+    FAST_SIMILARITY_3D = "fastsimilarity_3d"
+    FAST_SUBSTRUCTURE = "fastsubstructure"
+    FAST_SUPERSTRUCTURE = "fastsuperstructure"
+
+
+class SearchSuffix(str, Enum):
     SMILES = "smiles"
     INCHI = "inchi"
     SDF = "sdf"
     CID = "cid"
 
 
-class Xref(Enum):
-    REGISTRY_ID = "RegistryID"
-    RN = "RN"
-    PUBMED_ID = "PubMedID"
-    MMDB_ID = "MMDBID"
-    PROTEIN_GI = "ProteinGI"
-    NUCLEOTIDE_GI = "NucleotideGI"
-    TAXONOMY_ID = "TaxonomyID"
-    MIM_ID = "MIMID"
-    GENE_ID = "GeneID"
-    PROBE_ID = "ProbeID"
-    PATENT_ID = "PatentID"
+class OperationAlone(str, Enum):
+    RECORD = "record"
+    SYNONYMS = "synonyms"
+    SIDS = "sids"
+    CIDS = "cids"
+    AIDS = "aids"
+    ASSAY_SUMMARY = "assaysummary"
+    CLASSIFICATION = "classification"
+    DESCRIPTION = "description"
+    CONFORMERS = "conformers"
 
 
-class Operations(Enum):
-    RECORD = "record", 0
-    SYNONYMS = "synonyms", 0
-    SIDS = "sids", 0
-    CIDS = "cids", 0
-    AIDS = "aids", 0
-    ASSAY_SUMMARY = "assaysummary", 0
-    CLASSIFICATION = "classification", 0
-    DESCRIPTION = "description", 0
-    CONFORMERS = "conformers", 0
-    PROPERTY = "property", 1
-    XREFS = "xrefs", 2
-
-    def __init__(self, action: str, group: int) -> None:
-        self._action_ = action
-        self._group_ = group
-
-    @property
-    def action(self):
-        return self._action_
-
-    @property
-    def group(self):
-        return self._group_
+class OperationComplex(str, Enum):
+    PROPERTY = "property"
+    XREFS = "xrefs"
 
 
-class PropertyTags(Enum):
+class PropertyTags(str, Enum):
     MOLECULAR_FORMULA = "MolecularFormula"
     MOLECULAR_WEIGHT = "MolecularWeight"
     CANONICAL_SMILES = "CanonicalSMILES"
@@ -153,7 +118,21 @@ class PropertyTags(Enum):
     FINGERPRINT_2D = "Fingerprint2D"
 
 
-class Out(Enum):
+class Xrefs(str, Enum):
+    REGISTRY_ID = "RegistryID"
+    RN = "RN"
+    PUBMED_ID = "PubMedID"
+    MMDB_ID = "MMDBID"
+    PROTEIN_GI = "ProteinGI"
+    NUCLEOTIDE_GI = "NucleotideGI"
+    TAXONOMY_ID = "TaxonomyID"
+    MIM_ID = "MIMID"
+    GENE_ID = "GeneID"
+    PROBE_ID = "ProbeID"
+    PATENT_ID = "PatentID"
+
+
+class Out(str, Enum):
     JSON = "JSON"
     XML = "XML"
     SDF = "SDF"

@@ -1,14 +1,14 @@
 import pytest
 
 from molecad import __version__
-from molecad.builder import (
+from molecad.url_builder import (
     build_url,
     input_specification,
     join_w_comma,
     operation_specification,
     prepare_request
 )
-from molecad.downloader import (
+from molecad.pubchem_requests import (
     chunked,
     delay_iterations,
     generate_ids,
@@ -21,10 +21,9 @@ from molecad.types_ import (
     OperationAlone,
     OperationComplex,
     Out,
-    SearchPrefix,
-    SearchSuffix,
+    PropertyTags,
 )
-from molecad.utils import cutter, save_data_json
+from molecad.data_handler import cutter, save_data_json
 
 EXAMPLE1 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244/property/MolecularFormula,InChIKey/JSON"
 EXAMPLE2 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244/record/PNG"

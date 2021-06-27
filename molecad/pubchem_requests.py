@@ -9,8 +9,8 @@ from typing import (
     TypeVar
 )
 
-from molecad.builder import prepare_request
-from molecad.types_ import (
+from .url_builder import prepare_request
+from .types_ import (
     Domain,
     NamespCmpdAlone,
     OperationAlone,
@@ -18,7 +18,7 @@ from molecad.types_ import (
     Out,
     PropertyTags,
 )
-from molecad.utils import save_data_json
+from .data_handler import save_data_json
 
 T = TypeVar("T")
 

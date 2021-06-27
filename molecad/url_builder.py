@@ -1,5 +1,5 @@
 from typing import TypeVar, Union
-from molecad.types_ import (
+from .types_ import (
     Domain,
     OperationAlone,
     OperationComplex,

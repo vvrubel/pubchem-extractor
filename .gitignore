@@ -1,5 +1,6 @@
 #project
 data/*
+config.py
 
 # tmp
 __pycache__/

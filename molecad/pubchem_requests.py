@@ -106,7 +106,7 @@ def main():
     domain = Domain.COMPOUND
     namespace = NamespCmpdAlone.CID
     operation = OperationComplex.PROPERTY
-    tags = [
+    tags = (
         PropertyTags.MOLECULAR_FORMULA,
         PropertyTags.MOLECULAR_WEIGHT,
         PropertyTags.CANONICAL_SMILES,
@@ -119,7 +119,7 @@ def main():
         PropertyTags.ATOM_STEREO_COUNT,
         PropertyTags.BOND_STEREO_COUNT,
         PropertyTags.VOLUME_3D,
-    ]
+    )
     output = Out.JSON
 
     results = {}
@@ -136,8 +136,6 @@ def main():
         else:
             logger.debug("Response content: {}", res)
             for k, v in zip(i, res['PropertyTable']['Properties']):
-                # file = save_data_json(v, k)
-                # logger.info("Data saved in {}", file)
                 results[k] = v
     t_stop = time.monotonic()
     t_run = t_stop - t_start

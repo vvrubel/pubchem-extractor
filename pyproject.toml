@@ -1,21 +1,16 @@
 [tool.poetry]
-name = "moleCad"
+name = "molecad"
 version = "0.1.0"
 description = ""
-authors = ["vvrubel <vasilyeva1510@gmail.com>"]
-
-[[tool.poetry.source]]
-name = "biocad"
-url = "https://pypi.net.biocad.ru"
-secondary = true
+authors = ["vvrubel"]
+license = "free"
 
 [tool.poetry.dependencies]
-python = "^3.8"
-requests = "^2.25.1"
-pubchempy = "^1.0.4"
+python = "3.7"
+mongordkit = {git = "git@github.com:rdkit/mongo-rdkit.git"}
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.2"
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

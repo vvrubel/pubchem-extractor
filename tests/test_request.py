@@ -1,23 +1,19 @@
 import pytest
 
-from molecad import __version__
-from molecad.url_builder import (
+from molecad.data.request import (
     build_url,
+    chunked,
+    generate_ids,
     input_specification,
     join_w_comma,
     operation_specification,
     prepare_request,
-)
-from molecad.pubchem_requests import (
-    chunked,
-    generate_ids,
     request_data_json,
 )
 from molecad.types_ import (
     Domain,
-    NamespCmpdAlone,
-    OperationComplex,
-    OperationAlone,
+    NamespCmpd,
+    Operation,
     OperationComplex,
     Out,
     PropertyTags,
@@ -29,10 +25,6 @@ EXAMPLE3 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1/property/Mo
 EXAMPLE4 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1,2/property/MolecularFormula,MolecularWeight,IUPACName,CanonicalSMILES/JSON"
 EXAMPLE5 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244/record/PNG?image_size=large"
 BAD_EXAMPLE = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1/property/JSON"
-
-
-def test_version():
-    assert __version__ == "0.1.0"
 
 
 @pytest.mark.parametrize(
@@ -51,9 +43,9 @@ def test_join_w_comma(inp, expect):
 @pytest.mark.parametrize(
     "domain, namespace, ids, expect",
     [
-        (Domain.COMPOUND, NamespCmpdAlone.CID, 2244, "compound/cid/2244"),
-        (Domain.COMPOUND, NamespCmpdAlone.CID, "1,2,3", "compound/cid/1,2,3"),
-        ("compound", NamespCmpdAlone.CID, "1,2,3", "compound/cid/1,2,3"),
+        (Domain.COMPOUND, NamespCmpd.CID, 2244, "compound/cid/2244"),
+        (Domain.COMPOUND, NamespCmpd.CID, "1,2,3", "compound/cid/1,2,3"),
+        ("compound", NamespCmpd.CID, "1,2,3", "compound/cid/1,2,3"),
         ("compound", "cid", "1,2,3", "compound/cid/1,2,3"),
         (
             Domain.COMPOUND,
@@ -85,7 +77,7 @@ def test_operation_specification(op, tags, expect):
     [
         ("compound/cid/2244", "property/MolecularFormula,InChIKey", "JSON", EXAMPLE1),
         ("compound/cid/2244", "record", "PNG", EXAMPLE2),
-        ("compound/cid/2244", OperationAlone.RECORD, Out.PNG, EXAMPLE2),
+        ("compound/cid/2244", Operation.RECORD, Out.PNG, EXAMPLE2),
     ],
 )
 def test_build_url(inp, op, out, expect):
@@ -127,7 +119,7 @@ def test_chunked():
 
 def test_prepare_request():
     domain = Domain.COMPOUND
-    namespace = NamespCmpdAlone.CID
+    namespace = NamespCmpd.CID
     identifiers = [1]
     operation = OperationComplex.PROPERTY
     output = Out.JSON
@@ -137,7 +129,7 @@ def test_prepare_request():
 
 def test_prepare_request_w_tags():
     domain = Domain.COMPOUND
-    namespace = NamespCmpdAlone.CID
+    namespace = NamespCmpd.CID
     identifiers = [1]
     operation = OperationComplex.PROPERTY
     tags = (

@@ -7,7 +7,7 @@ class Domain(str, Enum):
     ASSAY = "assay"
 
 
-class NamespCmpdAlone(str, Enum):
+class NamespCmpd(str, Enum):
     CID = "cid"
     NAME = "name"
     SMILES = "smiles"
@@ -49,7 +49,7 @@ class SearchSuffix(str, Enum):
     CID = "cid"
 
 
-class OperationAlone(str, Enum):
+class Operation(str, Enum):
     RECORD = "record"
     SYNONYMS = "synonyms"
     SIDS = "sids"
@@ -133,3 +133,7 @@ class Out(str, Enum):
     TXT = "TXT"
     ASNT = "ASNT"
     ASNB = "ASNB"
+
+
+class DataHandler(str, Enum):
+    SAVE = "save_json"

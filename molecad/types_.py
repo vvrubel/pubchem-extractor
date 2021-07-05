@@ -1,7 +1,5 @@
 from enum import Enum
 
-from bson.objectid import ObjectId
-
 
 class Domain(str, Enum):
     COMPOUND = "compound"

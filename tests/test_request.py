@@ -1,6 +1,6 @@
 import pytest
 
-from molecad.data.request import (
+from molecad.data.core.downloader import (
     build_url,
     chunked,
     generate_ids,
@@ -89,17 +89,13 @@ def test_request_data_json():
     url = EXAMPLE1
     params = {}
     res = request_data_json(url, **params)
-    expectation = {
-        "PropertyTable": {
-            "Properties": [
-                {
-                    "CID": 2244,
-                    "MolecularFormula": "C9H8O4",
-                    "InChIKey": "BSYNRYMUTXBXSQ-UHFFFAOYSA-N",
-                }
-            ]
+    expectation = [
+        {
+            "CID": 2244,
+            "MolecularFormula": "C9H8O4",
+            "InChIKey": "BSYNRYMUTXBXSQ-UHFFFAOYSA-N",
         }
-    }
+    ]
     assert res == expectation
 
 
@@ -117,20 +113,11 @@ def test_chunked():
     assert chunks == [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]]
 
 
-def test_prepare_request():
-    domain = Domain.COMPOUND
-    namespace = NamespCmpd.CID
-    identifiers = [1]
-    operation = OperationComplex.PROPERTY
-    output = Out.JSON
-    url = prepare_request(domain, namespace, identifiers, operation, output)
-    assert url == BAD_EXAMPLE
-
-
 def test_prepare_request_w_tags():
     domain = Domain.COMPOUND
-    namespace = NamespCmpd.CID
-    identifiers = [1]
+    namespace_prefix = NamespCmpd.CID
+    namespace_suffix = None
+    i = [1]
     operation = OperationComplex.PROPERTY
     tags = (
         PropertyTags.MOLECULAR_FORMULA,
@@ -139,13 +126,14 @@ def test_prepare_request_w_tags():
         PropertyTags.CANONICAL_SMILES,
     )
     output = Out.JSON
-    url = prepare_request(domain, namespace, identifiers, operation, output, tags)
+    url = prepare_request(i, domain, namespace_prefix, namespace_suffix, operation, tags, output)
     assert url == EXAMPLE3
 
 
 def test_prepare_request_chunk():
     domain = Domain.COMPOUND
-    namespace = NamespCmpdAlone.CID
+    namespace_prefix = NamespCmpd.CID
+    namespace_suffix = None
     ids = generate_ids(1, 3)
     operation = OperationComplex.PROPERTY
     tags = (
@@ -157,5 +145,8 @@ def test_prepare_request_chunk():
     output = Out.JSON
     for chunk in chunked(ids, 2):
         identifiers = chunk
-        url = prepare_request(domain, namespace, identifiers, operation, output, tags)
+        url = prepare_request(
+            identifiers, domain, namespace_prefix, namespace_suffix, operation, tags, output
+        )
+
         assert url == EXAMPLE4

@@ -1,6 +1,5 @@
-.pytest_cache
-.idea
-.\.*~
+# project
+molecad/out/*
 
 # ci
 .gitlab-ci.yml

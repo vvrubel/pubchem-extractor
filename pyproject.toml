@@ -25,6 +25,9 @@ starlette = "^0.14.2"
 starlette-context = "^0.3.3"
 uvicorn = "^0.14.0"
 click-completion = "^0.5.2"
+importlib = "^1.0.4"
+importlib-metadata = "^1.6.1"
+python-dotenv = "^0.18.0"
 
 
 [tool.poetry.dev-dependencies]

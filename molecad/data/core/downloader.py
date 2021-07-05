@@ -1,12 +1,18 @@
 import time
-from typing import (Any, Dict, Iterable, Iterator, List, Optional, Sequence, TypeVar, Union)
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, TypeVar, Union
 
 import requests
+from loguru import logger
 
+from molecad.data.core.utils import (
+    chunked,
+    generate_ids,
+    join_w_comma,
+)
 from molecad.errors import (
     BadDomainError,
     BadNamespaceError,
-    OperationError,
+    BadOperationError,
 )
 from molecad.types_ import (
     Domain,
@@ -19,7 +25,6 @@ from molecad.types_ import (
     SearchSuffix,
 )
 from molecad.validator import (
-    check_tags,
     is_complex_operation,
     is_namespace_search,
     is_not_compound,
@@ -30,68 +35,6 @@ from molecad.validator import (
 IdT = TypeVar("IdT", int, str)
 T = TypeVar("T")
 BASE_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
-
-
-def generate_ids(start: int = 1, stop: int = 201) -> Iterator[int]:
-    """
-    Простой генератор значений CID.
-    .. note:: В рамках формирования базы данных интервал идентификаторов был равен (1, 500001).
-    :param start: по умолчанию равно 1, но может быть заменено на любое положительное число -
-    для скачивания порциями равно значению ``stop`` в предыдущей порции загрузки.
-    :param stop: любое значение до 156 миллионов; в тестовом режиме установлено значение 201 для
-    получения быстрого результата.
-    :return: генератор целых положительных чисел.
-    """
-    for n in range(start, stop):
-        yield n
-
-
-def chunked(iterable: Iterable[T], maxsize: int = 100) -> Iterator[List[T]]:
-    """
-    Принимает итерируемый объект со значениями одинакового типа и делит его на чанки одинкаовой
-    длины, равной ``maxsize``.
-    :param iterable: последовательность, пришедшая из функции ``generate_ids``.
-    :param maxsize: максимальное число элементов в чанке, для формирования базы данных равно
-    1000, тестовые запросы должны выполняться со значением 100.
-    :return: выбрасывает списоки элементов - чанки, которые затем необходимо передать в функцию
-    ``join_w_comma()``, после чего полученная строка может быть передана в ``input_specification``.
-    """
-    chunk = []
-    for i in iterable:
-        chunk.append(i)
-        if len(chunk) >= maxsize:
-            yield chunk
-            chunk = []
-
-
-def delay_iterations(
-    iterable: Iterable[T],
-    waiting_time: float = 60.0,
-    maxsize: int = 400
-) -> Iterator[T]:
-    """
-    Ограничения на запросы, совершаемые в службу PubChem REST:
-    * Не больше 5 запросов в секунду.
-    * Не больше 400 запросов в минуту.
-    * Суммарное время обработки запросов, отправленных в течение минуты, не должно превышать 300
-    секунд.
-    :param iterable: последовательности идентификаторов, полученных из функции ``generate_ids``
-    или ``chunked``.
-    :param waiting_time: 60 секунд.
-    :param maxsize: 400 запросов.
-    :return: генерирует последовательность в соотвествии с ограничениями серверов Pubchem.
-    """
-    window = []
-    for i in iterable:
-        yield i
-        t = time.monotonic()
-        window.append(t)
-        while t - waiting_time > window[0]:
-            window.pop(0)
-        if len(window) > maxsize:
-            t0 = window[0]
-            delay = t - t0
-            time.sleep(delay)
 
 
 def input_specification(domain: str, namespace: str, identifiers: str) -> str:
@@ -113,9 +56,7 @@ def input_specification(domain: str, namespace: str, identifiers: str) -> str:
     return f"{domain}/{namespace}/{identifiers}"
 
 
-def operation_specification(
-    operation: str, tags: str = None
-) -> str:
+def operation_specification(operation: str, tags: str = None) -> str:
     """
     Часть URL-адреса указывает службе Pubchem, что делать с данными, определенными в первой
     части URL-адреса, например, вы можете получить конкретные свойства соединений. Функция
@@ -147,20 +88,7 @@ def build_url(input_spec: str, operation_spec: str, output_format: str) -> str:
     return f"{BASE_URL}/{input_spec}/{operation_spec}/{output_format}"
 
 
-def join_w_comma(*args: T) -> str:
-    """
-    Функция форматирует входящую последовательность аргументов, соединяя элементы запятой без
-    пробелов и приводит полученное к строке.
-    :param args: любая последовательность аргументов одинакового типа.
-    :return: строка разделенных запятой и без пробела значений.
-    """
-    return ",".join(f"{i}" for i in args)
-
-
-def joined_namespace(
-    prefix: str,
-    suffix: Optional[str] = None
-) -> str:
+def joined_namespace(prefix: str, suffix: Optional[str] = None) -> str:
     """
     Функция форматирует входной параметр ``namespace`` для передачи его в функцию
     ``input_specification``. В текущей версии сервиса реализована только для значений из базы
@@ -187,7 +115,7 @@ def prepare_request(
     namespace_prefix: Union[NamespCmpd, SearchPrefix] = NamespCmpd.CID,
     namespace_suffix: Optional[SearchSuffix] = None,
     operation: Union[Operation, OperationComplex] = Operation.RECORD,
-    tags: Optional[Sequence[PropertyTags]] = None,
+    tags: Optional[Sequence[str]] = None,
     output: Out = Out.JSON,
 ) -> str:
     """
@@ -208,8 +136,9 @@ def prepare_request(
     принимает значения из класса ``SuffixSearch``; по умолчанию - None
     .. note:: В текущей версии сервиса значение параметра - None.
     :param operation: принимает значения в зависимости от определенного ранее параметра
-    ``domain``. Если значение не определено, то по умолчанию извлекается вся запись,
-    т.е. значение равно ``Operation.RECORD``.
+    ``domain``. Аргумент может принимать значения из классов ``Operation``, ``OperationComplex``.
+    Если значение не определено, то по умолчанию извлекается вся запись, т.е. значение равно
+    ``Operation.RECORD``.
     .. note:: В текущей версии сервиса доступена операции, поиск по которым выполняется в базе
     данных ``Compound``, а формат их выходных данных должен представлять собой JSON.
     :param tags: определяется только в случае если ``operation`` == ``Operation.PROPERTY``,
@@ -225,18 +154,19 @@ def prepare_request(
     joined_identifiers = join_w_comma(*identifiers)
     namespace = joined_namespace(namespace_prefix, namespace_suffix)
     input_spec = input_specification(domain, namespace, joined_identifiers)
-    if is_complex_operation(operation, tags) and check_tags(tags):
-        joined_tags = join_w_comma(tags)
+
+    if is_complex_operation(operation, tags) and tags is not None:
+        joined_tags = join_w_comma(*tags)
         operation_spec = operation_specification(operation, joined_tags)
     elif is_simple_operation(operation, tags):
         operation_spec = operation_specification(operation)
     else:
-        raise OperationError
+        raise BadOperationError
     url = build_url(input_spec, operation_spec, output)
     return url
 
 
-def request_data_json(url: str, **params: str) -> Dict[str, Any]:
+def request_data_json(url: str, **params: str) -> List[Dict[str, Any]]:
     """
     Функция отправляет синхронный запрос "GET" к серверам PUG REST баз данных Pubchem.
     :param url: возвращается из функции ``prepare_request`` и является обязательным для всех
@@ -250,4 +180,88 @@ def request_data_json(url: str, **params: str) -> Dict[str, Any]:
     только в формате JSON .
     """
     response = requests.get(url, params=params).json()
-    return response
+    return response["PropertyTable"]["Properties"]
+
+
+def delay_iterations(
+    iterable: Iterable[T], waiting_time: float = 60.0, maxsize: int = 400
+) -> Iterator[T]:
+    """
+    Ограничения на запросы, совершаемые в службу PubChem REST:
+    * Не больше 5 запросов в секунду.
+    * Не больше 400 запросов в минуту.
+    * Суммарное время обработки запросов, отправленных в течение минуты, не должно превышать 300
+    секунд.
+    :param iterable: последовательности идентификаторов, полученных из функции ``generate_ids``
+    или ``chunked``.
+    :param waiting_time: 60 секунд.
+    :param maxsize: 400 запросов.
+    :return: генерирует последовательность в соотвествии с ограничениями серверов Pubchem.
+    """
+    window = []
+    for i in iterable:
+        yield i
+        t = time.monotonic()
+        window.append(t)
+        while t - waiting_time > window[0]:
+            window.pop(0)
+        if len(window) > maxsize:
+            t0 = window[0]
+            delay = t - t0
+            time.sleep(delay)
+
+
+def execute_request(start: int, stop: int, maxsize: int) -> List[Dict[str, Any]]:
+    """
+    .. note:: В текущей версии сервиса доступен запрос свойств молекул из базы данных ``Compound``.
+    Аргументы функции ``generate_ids(start, stop)`` по умолчанию равны 1 и 201 соотвественно и
+    могут не указываться явно, что соответствует тестовым запросам к серверу Pubchem;
+    в случае формирования базы данных эти значения должны быть явно указаны в качестве
+    аргументов, как 1 и 500001 соответственно. Для последующих запросов ``start`` = ``stop`` от
+    предыдущего запроса, а ``stop`` увеличивается на 500000.
+    Второй аргумент, передаваемый в функцию ``chuncked`` - ``chunk_size``, в рамках для тестировых
+    запросов по умолчанию равен 100 и может не указываться явно; при формировании базы данных со
+    свойствами молекул должен быть равен 1000.
+    """
+    domain = Domain.COMPOUND
+    namespace_prefix = NamespCmpd.CID
+    namespace_suffix = None
+    operation = OperationComplex.PROPERTY
+    tags = (
+        PropertyTags.MOLECULAR_FORMULA,
+        PropertyTags.MOLECULAR_WEIGHT,
+        PropertyTags.CANONICAL_SMILES,
+        PropertyTags.INCHI,
+        PropertyTags.IUPAC_NAME,
+        PropertyTags.XLOGP,
+        PropertyTags.H_BOND_DONOR_COUNT,
+        PropertyTags.H_BOND_ACCEPTOR_COUNT,
+        PropertyTags.ROTATABLE_BOND_COUNT,
+        PropertyTags.ATOM_STEREO_COUNT,
+        PropertyTags.BOND_STEREO_COUNT,
+        PropertyTags.VOLUME_3D,
+    )
+    output = Out.JSON
+
+    data = {}
+    t_start = time.monotonic()
+    chunks = chunked(generate_ids(start, stop), maxsize)
+    for i in delay_iterations(chunks):
+        url = prepare_request(
+            i, domain, namespace_prefix, namespace_suffix, operation, tags, output
+        )
+        logger.debug("Делаю запрос по URL: {}", url)
+        try:
+            res = request_data_json(url)
+        except requests.HTTPError:
+            logger.error("Ошибочка вышла: {}", exc_info=True)
+            break
+        else:
+            logger.debug("Пришел ответ: {}", res)
+            for k, v in zip(i, res):
+                data[k] = v
+    t_stop = time.monotonic()
+    t_run = t_stop - t_start
+    logger.info("Время, затраченное на операцию, равно {}", t_run)
+
+    return list(data.values())

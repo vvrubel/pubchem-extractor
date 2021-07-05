@@ -34,7 +34,7 @@ def is_simple_namespace(prefix: str, suffix: Optional[str]) -> bool:
 
 def is_namespace_search(prefix: str, suffix: Optional[str]) -> bool:
     """
-
+    Проверяет, что пространство имен поиска составлено корректно.
     :param prefix: значение должно принадлежать классу ``PrefixSearch``.
     :param suffix: значение должно принадлежать классу ``SuffixSearch``.
     :return: если условие выполнено, то возвращается ``True``, иначе ``False``.
@@ -44,7 +44,7 @@ def is_namespace_search(prefix: str, suffix: Optional[str]) -> bool:
 
 def is_simple_operation(operation: str, tags: Optional[Sequence[str]]) -> bool:
     """
-
+    Проверяет,что операция является простой и составлена корректно.
     :param operation: значение должно принадлежать классу ``Operation``.
     :param tags: должен быть равен None.
     :return: если условие выполнено, то возвращается ``True``, иначе ``False``.
@@ -54,7 +54,7 @@ def is_simple_operation(operation: str, tags: Optional[Sequence[str]]) -> bool:
 
 def is_complex_operation(operation: str, tags: Optional[Sequence[str]]) -> bool:
     """
-
+    Проверяет,что операция является сложной и составлена корректно.
     :param operation: значение должно принадлежать классу ``OperationComplex``.
     :param tags: значение должно принадлежать классу ``PropertyTags``.
     :return: если условие выполнено, то возвращается ``True``, иначе ``False``.

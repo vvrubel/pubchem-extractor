@@ -28,6 +28,7 @@ click-completion = "^0.5.2"
 importlib = "^1.0.4"
 importlib-metadata = "^1.6.1"
 python-dotenv = "^0.18.0"
+click = "^8.0.1"
 
 
 [tool.poetry.dev-dependencies]

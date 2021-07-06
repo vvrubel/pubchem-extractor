@@ -46,7 +46,7 @@ def fetch(out_dir: pathlib.Path, start: int, stop: int, size: int) -> None:
 @click.command()
 @click.option("--file", required=True, type=pathlib.Path)
 @click.option("--f-dir", required=True, type=pathlib.Path)
-@click.option("--size", default=1, type=int)
+@click.option("--size", default=1000, type=int)
 def split(file: pathlib.Path, f_dir: pathlib.Path, size: int) -> None:
     """
     Разрезает большой JSON на чанки.

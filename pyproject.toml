@@ -1,21 +1,57 @@
 [tool.poetry]
-name = "moleCad"
+name = "molecad"
 version = "0.1.0"
-description = ""
+description = "API for retrieving data from Pubchem databases and performing substructure search through local database"
 authors = ["vvrubel <vasilyeva1510@gmail.com>"]
-
-[[tool.poetry.source]]
-name = "biocad"
-url = "https://pypi.net.biocad.ru"
-secondary = true
+license = "free"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.7.1"
+mongordkit = {git = "git@github.com:rdkit/mongo-rdkit.git"}
+rdkit-pypi = "^2021.3.3"
+pymongo = "^3.10.1"
+loguru = "^0.5.3"
+pathlib = "^1.0.1"
+numpy = "^1.21.0"
+matplotlib = "^3.4.2"
+statistics = "^1.0.3"
+mongomock = "^3.19.0"
+pandas = "^1.2.5"
+pydantic = "^1.8.2"
+fastapi = "^0.65.2"
 requests = "^2.25.1"
-pubchempy = "^1.0.4"
+click-pathlib = "^2020.3.13"
+starlette = "^0.14.2"
+starlette-context = "^0.3.3"
+uvicorn = "^0.14.0"
+click-completion = "^0.5.2"
+importlib = "^1.0.4"
+importlib-metadata = "^1.6.1"
+python-dotenv = "^0.18.0"
+click = "^8.0.1"
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.2"
+pytest = "^5.4.3"
+black = "^21.6b0"
+flake8 = "^3.9.2"
+mypy = "^0.910"
+isort = "^5.9.1"
+
+[tool.black]
+line-length = 100
+target_version = ["py37"]
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | build
+  | dist
+)/
+'''
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

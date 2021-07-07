@@ -59,10 +59,10 @@ def is_complex_operation(operation: str, tags: Optional[Sequence[str]]) -> bool:
     :param tags: значение должно принадлежать классу ``PropertyTags``.
     :return: если условие выполнено, то возвращается ``True``, иначе ``False``.
     """
-    return isinstance(operation, OperationComplex) and check_tags(tags)
+    return isinstance(operation, OperationComplex) and tags is not None and check_tags(tags)
 
 
-def check_tags(tags) -> bool:
+def check_tags(tags: Optional[Sequence[str]]) -> bool:
     """
     Проверяет значение каждого тега на принадлежность к классу ``PropertyTags``.
     :param tags: последовательность, состоящая из строковых значений.

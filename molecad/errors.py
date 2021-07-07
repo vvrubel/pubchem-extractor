@@ -46,3 +46,11 @@ class BadOperationError(BadRequestError):
 
     def __str__(self):
         return "Ошибка при составлении операции"
+
+
+class DirExistsError(BadRequestError, FileExistsError):
+    def to_dict(self) -> dict:
+        return {"error": "Bad directory path", "message": str(self)}
+
+    def __str__(self):
+        return "Указанная директория существует: укажите другое имя"

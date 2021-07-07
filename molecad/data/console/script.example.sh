@@ -7,8 +7,9 @@ source ./.env
 file=$JSON
 dir=$OUT_DIR
 f_dir=$FILES_DIR
+name=$MONGO_DB_COLLECTION
 
-rm -rf $dir
+rm -rf "$dir"
 
 echo Downloading data into $dir
 poetry run python -m molecad.data.console fetch \
@@ -25,5 +26,6 @@ poetry run python -m molecad.data.console split \
        --size 1000
 
 echo Import files from directory $f_dir to MongoDB
-poetry run python -m molecad.data.console populate\
-       --f-dir $f_dir
+poetry run python -m molecad.data.console populate \
+       --f-dir $f_dir \
+       --collection $name

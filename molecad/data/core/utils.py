@@ -1,7 +1,7 @@
 import json
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, TypeVar
+from typing import Dict, Iterable, Iterator, List, TypeVar, Union
 
 from loguru import logger
 
@@ -78,7 +78,7 @@ def file_name(dir_path: Path) -> Path:
     return f_path
 
 
-def read(f_path: Path) -> List[Dict[str, Any]]:
+def read(f_path: Path) -> Union[Dict[int, T], List[T]]:
     """
     Читает данные из файла.
     :param f_path: Абсолютный путь до файла.
@@ -86,10 +86,13 @@ def read(f_path: Path) -> List[Dict[str, Any]]:
     """
     with open(f_path, "rt") as f:
         data = json.load(f)
-        return list(data.values())
+        return data
 
 
-def write(f_path: Path, data: List[Dict[str, Any]]) -> None:
+def write(
+    f_path: Path,
+    data: Union[Dict[int, T], List[T]],
+) -> None:
     """
     Пишет данные в файл.
     :param f_path: Абсолютный путь до файла.
@@ -98,3 +101,16 @@ def write(f_path: Path, data: List[Dict[str, Any]]) -> None:
     """
     with open(f_path, "wt") as f:
         json.dump(data, f)
+
+
+def converter(obj: Union[Dict[int, T], List[T]]) -> List[T]:
+    """
+    Согласует тип данных объекта.
+    :param obj: может иметь тип словаря или списка.
+    :return: в случае если объект имеет тип словаря, то функция возвращает список его значений;
+    если же объект имеет тип списка (оставшиеся случаи), то функция возвращает сам объект.
+    """
+    if isinstance(obj, dict):
+        return list(obj.values())
+    else:
+        return obj

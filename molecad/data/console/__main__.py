@@ -23,7 +23,8 @@ def cli():
     "--out-dir",
     required=True,
     type=pathlib.Path,
-    help="Путь до output-директории, в которую будет записан JSON-файл",
+    help="Путь до output-директории, в которую будет записан JSON-файл – не должна существовать "
+    "на момент создания файла.",
 )
 @click.option(
     "--start", default=1, required=True, type=int, help="Первое значение из запрашиваемых CID"
@@ -55,7 +56,8 @@ def fetch(out_dir: pathlib.Path, start: int, stop: int, size: int) -> None:
     "--f-dir",
     required=True,
     type=pathlib.Path,
-    help="Путь до директории, в которую будут записаны созданные chunked-файлы",
+    help="Путь до директории, в которую будут записаны созданные chunked-файлы – не должна "
+    "существовать до начала выполнения записи файлов.",
 )
 @click.option(
     "--size", default=1000, type=int, help="Максимальное число элементов в одном chunked-файле"

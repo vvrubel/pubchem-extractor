@@ -63,8 +63,6 @@ $ poetry install
 
 | Переменная | Описание | Значение по умолчанию | 
 |---|---|---|
-|ENV|---|---|
-|SERVICE_URL|URL-адрес запущенного приложения; рекомендуется устанавливать API из сети BIOCAD (например, http://10.249.233.40:8888/). Не забудьте указать порт (т.е. 8888) и протокол (http или https).|"http://localhost:8888"|
 |MONGO_HOST|Хост базы данных MongoDB, если значение не определено, то будет использоваться хост локальной базы|"127.0.0.1"|
 |MONGO_PORT|Порт базы данных MongoDB, если значение не определено, то будет использоваться порт локальной базы|27017|
 |MONGO_USER|---|---|
@@ -89,7 +87,7 @@ $ poetry install
 
 ```shell
 $ mkdir -p ./data/db
-$ mongod --dbpath ~/MongoDB/data/db
+$ mongod --dbpath ./data/db
 ```
 
 После того как сервер запущен, становится возможным подключение к локальной базе данных. При 
@@ -113,7 +111,7 @@ MongoDB Enterprise> exit
 Готово! Теперь вы можете подключаться к своей локальной базе данных, используя креды:
 
 ```shell
-$ mongod --dbpath ~/MongoDB/data/db --auth
+$ mongod --dbpath ./data/db --auth
 $ mongo mongodb://superuser:<password>@127.0.0.1:27017/admin
 ```
 
@@ -160,7 +158,7 @@ Usage: python -m molecad.data.console fetch [OPTIONS]
 
 Options:
   --out-dir PATH   Путь до output-директории, в которую будет записан JSON-
-                   файл  [required]
+                   файл. Не должна существовать на момент создания файла.  [required]
   --start INTEGER  Первое значение из запрашиваемых CID  [required]
   --stop INTEGER   Последнее значение из запрашиваемых CID  [required]
   --size INTEGER   Максимальное число идентификаторов в одном запросе
@@ -193,7 +191,8 @@ Usage: python -m molecad.data.console split [OPTIONS]
 Options:
   --file PATH     Путь до большого JSON-файла  [required]
   --f-dir PATH    Путь до директории, в которую будут записаны созданные
-                  chunked-файлы  [required]
+                  chunked-файлы – не должна существовать до начала выполнения записи файлов 
+                  [required]
   --size INTEGER  Максимальное число элементов в одном chunked-файле
   --help          Show this message and exit.
 

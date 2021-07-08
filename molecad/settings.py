@@ -7,18 +7,20 @@ from pydantic import (
 class Settings(BaseSettings):
     env: str = Field("production", env="ENV")
     api_version: str = "/v0"
-    service_url: str = Field("http://localhost:5000", env="SERVICE_URL")
+    service_url: str = Field("http://localhost:8888", env="SERVICE_URL")
 
     mongo_host = Field("127.0.0.1", env="MONGO_HOST")
     mongo_port = Field(27017, env="MONGO_PORT")
     mongo_user = Field("", env="MONGO_USER")
     mongo_password = Field("", env="MONGO_PASSWORD")
     mongo_db_name = Field("molecad", env="MONGO_DB_NAME")
-    mongo_db_collection = Field("properties", env="MONGO_DB_COLLECTION")
+    mongo_db_collection = Field("molecules", env="MONGO_DB_COLLECTION")
     mongo_auth_source = Field("admin", env="MONGO_AUTH_SOURCE")
 
-    data_file = Field("", env="FILE")
+    project_dir = Field("", env="PROJ_DIR")
     data_dir = Field("", env="OUT_DIR")
+    data_file = Field("", env="FILES_DIR")
+    saved_json = Field("", env="JSON")
 
     component_name = "molecad"
 

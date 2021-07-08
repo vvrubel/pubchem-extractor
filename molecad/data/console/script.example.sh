@@ -2,14 +2,12 @@
 
 # Run script from project directory that contains `.env` file
 
-source ./.env
-
 file=$JSON
 dir=$OUT_DIR
-f_dir=$FILES_DIR
+f_dir=${dir}/files
 name=$MONGO_DB_COLLECTION
 
-rm -rf "$dir"
+rm -rf $dir
 
 echo Downloading data into $dir
 poetry run python -m molecad.data.console fetch \

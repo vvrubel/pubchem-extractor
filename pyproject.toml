@@ -6,7 +6,7 @@ authors = ["vvrubel <vasilyeva1510@gmail.com>"]
 license = "free"
 
 [tool.poetry.dependencies]
-python = "^3.7.1"
+python = "^3.7.10"
 mongordkit = {git = "git@github.com:rdkit/mongo-rdkit.git"}
 rdkit-pypi = "^2021.3.3"
 pymongo = "^3.10.1"

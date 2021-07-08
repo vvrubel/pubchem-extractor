@@ -84,16 +84,25 @@ def split(file: pathlib.Path, f_dir: pathlib.Path, size: int) -> None:
     type=str,
     help="Название коллекции MongoDB, в которую будут загружены файлы.",
 )
-def populate(f_dir: pathlib.Path, collection: str) -> None:
+@click.option(
+    "--drop",
+    required=True,
+    type=bool,
+    help="Если значение определено = True, то очищает коллекцию перед импортом документов, "
+    "если же = False, то импортирует все документы в указанную коллекцию.",
+)
+def populate(f_dir: pathlib.Path, collection: str, drop: bool) -> None:
     n = 0
-    drop_collection(collection)
+    if drop is True:
+        drop_collection(collection)
+        click.echo(f"Коллекция {collection} была очищена.")
     click.echo(f"Произвожу импорт из папки {f_dir}")
     for file in f_dir.iterdir():
         click.echo(f"Импортирую файл {file}")
         data: List[Dict[str, Any]] = converter(read(file))
         upload_data(data, collection)
         n += len(data)
-    click.echo(f"Загружено документов в коллекцию {n}")
+    click.echo(f"Загружено {n} документов в коллекцию {collection}")
 
 
 cli.add_command(fetch)

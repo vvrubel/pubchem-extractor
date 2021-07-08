@@ -1,5 +1,6 @@
 # project
-molecad/data/out/*
+molecad/data/out*/*
+notebooks/*
 
 # ci
 .gitlab-ci.yml

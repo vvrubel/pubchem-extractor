@@ -19,7 +19,6 @@ class Settings(BaseSettings):
 
     project_dir = Field("", env="PROJ_DIR")
     data_dir = Field("", env="OUT_DIR")
-    data_file = Field("", env="FILES_DIR")
     saved_json = Field("", env="JSON")
 
     component_name = "molecad"

@@ -223,9 +223,39 @@ Options:
 `conda` для разрешения своих зависимостей.  Но в данном проекте было решено реализовать 
 управление зависимостями этих библиотек с использованием `poetry`.  
 Если вы хотите использовать окружение конды и вам хочется узнать, как установить `conda` рядом с 
-`pyenv` наиболее безболезненно – читайте [тут](https://confluence.biocad.ru/x/vi1QCw).
+`pyenv` наиболее безболезненно – читайте [тут](https://confluence.biocad.ru/x/vi1QCw).  
+
+После того как мы загрузили все скачанные данные в локальную базу и настроили `mongo-rdkit` - 
+можно приступить к рассмотрению задачи по реализации подструктурного поиска. Перед этим нужно 
+отметить несколько ключевых моментов:
+
+- так как поиск будет производиться по smiles, то каждый документ должен содержать поле 
+  `CanonicalSMILES`, а все документы, которые не имеют данного поля, должны быть удалены. Пример 
+  того, как это можно сделать через консоль, авторизовавшись на сервере mongod.
+  
+```shell
+MongoDB Enterprise > db.molecules.find({"CanonicalSMILES": { $exists: false }}).count()
+37
+
+MongoDB Enterprise > db.molecules.deleteMany({"CanonicalSMILES": { $exists: false }})
+{ "acknowledged" : true, "deletedCount" : 37 }
+```
+
 
 ## Схема базы данных
 
+    CID: int
+    MolecularFormula: str
+    MolecularWeight: Union[float, str]  # почему-то в response приходит строка
+    CanonicalSMILES: str
+    InChI: str
+    IUPACName: str
+    XLogP: float
+    HBondDonorCount: int
+    HBondAcceptorCount: int
+    RotatableBondCount: int
+    AtomStereoCount: int
+    BondStereoCount: int
+    Volume3D: Union[float, int]
 
 ## Документация ручек API

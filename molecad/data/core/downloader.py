@@ -211,7 +211,7 @@ def delay_iterations(
             time.sleep(delay)
 
 
-def execute_request(start: int, stop: int, maxsize: int) -> List[Dict[str, Any]]:
+def execute_request(start: int, stop: int, maxsize: int) -> Dict[Any, Dict[str, Any]]:
     """
     .. note:: В текущей версии сервиса доступен запрос свойств молекул из базы данных ``Compound``.
     Аргументы функции ``generate_ids(start, stop)`` по умолчанию равны 1 и 201 соответственно и
@@ -264,4 +264,4 @@ def execute_request(start: int, stop: int, maxsize: int) -> List[Dict[str, Any]]
     t_run = t_stop - t_start
     logger.info("Время, затраченное на операцию, равно {}", t_run)
 
-    return list(data.values())
+    return data

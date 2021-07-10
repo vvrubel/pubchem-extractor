@@ -1,8 +1,9 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-import pymongo.results
+import pymongo.errors
 from loguru import logger
 from pymongo import MongoClient
+
 
 from molecad.settings import setup
 
@@ -22,50 +23,55 @@ class Connect:
 db = Connect.get_connection()
 
 
-def use_collection(collection_name: str):
+def create_index(collection_name: str) -> None:
     """
-    :param collection_name: название запрашиваемой коллекции.
-    :return: Возвращает коллекцию по запрашиваемому имени.
+    Создает на коллекции уникальный индекс по полю "CID".
+    :param collection_name: название коллекции, в которой будет создан индекс.
+    :return: None
     """
-    return db[collection_name]
+    try:
+        db[collection_name].create_index([("CID", 1)], unique=True)
+    except pymongo.errors.OperationFailure:
+        logger.info(f"На коллекции {collection_name} индекс CID уже присутствует.")
+    else:
+        logger.info(f"На коллекции {collection_name} создан индекс – CID.")
 
 
 def drop_collection(collection_name: str) -> None:
     """
     Если в коллекции есть документы, то она будет очищена.
+    :param collection_name: название коллекции, которая будет очищена.
+    :return: None
     """
-    collection = use_collection(collection_name)
+    collection = db[collection_name]
     if collection.count_documents({}) > 0:
         collection.drop()
-    logger.info(f"Коллекция {collection} очищена.")
+    logger.info(f"Коллекция {collection_name} очищена.")
 
 
-def upload_data(data: List[Dict[str, Any]], collection_name: str) -> None:
+def upload_data(data: List[Dict[str, Any]], collection_name: str) -> int:
     """
-    Загружает данные в коллекцию.
+    Загружает данные в коллекцию и создает на ней индекс.
     :param data: взятые из файла или скачанные напрямую с серверов Pubchem.
     :param collection_name: название коллекции, в которую будут загружены данные.
+    :return: число документов, загруженных за цикл работы функции.
     """
-    collection = use_collection(collection_name)
-    return collection.insert_many(data)
+    # n = 0
+    # for rec in data:
+    #     try:
+    #         db[collection_name].insert_one(rec)
+    #     except pymongo.errors.DuplicateKeyError:
+    #         pass
+    #     else:
+    #         n += 1
+    # return n
+    try:
+        return db[collection_name].insert_many(data)
+    except pymongo.errors.BulkWriteError as e:
+        pass
 
 
-def retrieve_smiles(collection_name: str, filters):
-    """
-    Функция позволяет извлечь поле `CanonicalSMILES` из документов
-    :param collection_name: название коллекции, из которой будет извлекаться smiles.
-    :param filters:
-    :return:
-    """
-    collection = use_collection(collection_name)
-    cursor = collection.find(filters, {"CanonicalSMILES": 1, "_id": 0})
-    smiles = []
-    for n in cursor:
-        smiles.append(n)
-    return smiles
-
-
-def delete_items_without_smiles(collection_name: str):
+def delete_without_smiles(collection_name: str) -> int:
     """
     В данных, загруженных с Pubchem, для некоторых молекул могут отсутствовать некоторые из
     запрашиваемых полей - для наших задач критически важным является поле ``CanonicalSMILES``.
@@ -74,7 +80,23 @@ def delete_items_without_smiles(collection_name: str):
     документов.
     :return: количество удаленных документов.
     """
-    collection = use_collection(collection_name)
-    collection.delete_many({"CanonicalSMILES": {"$exists": "false"}})
-    cnt = pymongo.results.DeleteResult.deleted_count
-    logger.info(f"{cnt} document were deleted")
+    collection = db[collection_name]
+    count = collection.delete_many({"CanonicalSMILES": {"$exists": False}}).deleted_count
+    logger.info(f"Удалено {count} документов")
+    return count
+
+
+def retrieve_smiles(collection_name: str, filters: Optional[Dict[str, Any]] = None):
+    """
+    Функция позволяет извлечь поле `CanonicalSMILES` из документов.
+    :param collection_name: название коллекции, из которой будет извлекаться значение поля
+    `CanonicalSMILES`.
+    :param filters:
+    :return:
+    """
+    collection = db[collection_name]
+    cursor = collection.find({}, {"CanonicalSMILES": 1, "CID": 1, "_id": 0})
+    smiles = {}
+    for rec in cursor:
+        smiles[rec["CID"]] = rec["CanonicalSMILES"]
+    return smiles

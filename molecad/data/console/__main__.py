@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 
 import click
 
-from molecad.data.core.db import drop_collection, upload_data
+from molecad.data.core.db import create_index, upload_data
 from molecad.data.core.downloader import execute_request
 from molecad.data.core.utils import check_dir, chunked, converter, file_name, read, write
 
@@ -47,7 +47,7 @@ def fetch(out_dir: pathlib.Path, start: int, stop: int, size: int) -> None:
 
 
 @click.command(
-    help="Разрезает большой JSON на чанки меньшего размера для последующей загрузки в "
+    help="Разрезает большой JSON на chunked-файлы меньшего размера для последующей загрузки в "
     "MongoDB, что необходимо из-за внутренних ограничений MongoDB на количество "
     "документов, загружаемых за один раз одним файлом."
 )
@@ -72,7 +72,10 @@ def split(file: pathlib.Path, f_dir: pathlib.Path, size: int) -> None:
         click.echo(f"Записываю в файл {ch_path}")
 
 
-@click.command(help="Загружает chunked-файлы из указанной директории в локальную базу MongoDB.")
+@click.command(
+    help="Создает индекс на указанной коллекции MongoDB и загружает chunked-файлы из указанной "
+    "директории в эту коллекцию."
+)
 @click.option(
     "--f-dir",
     required=True,
@@ -86,18 +89,9 @@ def split(file: pathlib.Path, f_dir: pathlib.Path, size: int) -> None:
     type=str,
     help="Название коллекции MongoDB, в которую будут загружены файлы.",
 )
-@click.option(
-    "--drop",
-    required=True,
-    type=bool,
-    help="Если значение определено = True, то очищает коллекцию перед импортом документов, "
-    "если же = False, то импортирует все документы в указанную коллекцию.",
-)
-def populate(f_dir: pathlib.Path, collection: str, drop: bool) -> None:
+def populate(f_dir: pathlib.Path, collection: str) -> None:
     n = 0
-    if drop is True:
-        drop_collection(collection)
-        click.echo(f"Коллекция {collection} была очищена.")
+    create_index(collection)
     click.echo(f"Произвожу импорт из папки {f_dir}")
     for file in f_dir.iterdir():
         click.echo(f"Импортирую файл {file}")

@@ -1,10 +1,9 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from molecad.data.core.db import Connect, db
-from molecad.data.core.fingerprints import search
+from molecad.data.core.search import search
 
 app = FastAPI()
 

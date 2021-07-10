@@ -179,8 +179,12 @@ def request_data_json(url: str, **params: str) -> List[Dict[str, Any]]:
     :return: ответ от сервера .. note:: В текущей версии сервиса реализуется получения ответа
     только в формате JSON .
     """
-    response = requests.get(url, params=params).json()
-    return response["PropertyTable"]["Properties"]
+    try:
+        response = requests.get(url, params=params).json()
+    except KeyError:
+        breakpoint()
+    else:
+        return response["PropertyTable"]["Properties"]
 
 
 def delay_iterations(
@@ -211,7 +215,7 @@ def delay_iterations(
             time.sleep(delay)
 
 
-def execute_request(start: int, stop: int, maxsize: int) -> Dict[Any, Dict[str, Any]]:
+def execute_requests(start: int, stop: int, maxsize: int) -> Iterator[Dict[str, Any]]:
     """
     .. note:: В текущей версии сервиса доступен запрос свойств молекул из базы данных ``Compound``.
     Аргументы функции ``generate_ids(start, stop)`` по умолчанию равны 1 и 201 соответственно и
@@ -243,7 +247,7 @@ def execute_request(start: int, stop: int, maxsize: int) -> Dict[Any, Dict[str, 
     )
     output = Out.JSON
 
-    data = {}
+    # data = {}
     t_start = time.monotonic()
     chunks = chunked(generate_ids(start, stop), maxsize)
     for i in delay_iterations(chunks):
@@ -258,10 +262,12 @@ def execute_request(start: int, stop: int, maxsize: int) -> Dict[Any, Dict[str, 
             break
         else:
             logger.debug("Пришел ответ: {}", res)
-            for k, v in zip(i, res):
-                data[k] = v
+            for rec in res:
+                yield rec
+            # for k, v in zip(i, res):
+            #     data[k] = v
     t_stop = time.monotonic()
     t_run = t_stop - t_start
     logger.info("Время, затраченное на операцию, равно {}", t_run)
 
-    return data
+    # return data

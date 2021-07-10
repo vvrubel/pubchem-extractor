@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 import click
 
 from molecad.data.core.db import drop_collection, upload_data
-from molecad.data.core.downloader import execute_request
+from molecad.data.core.downloader import execute_requests
 from molecad.data.core.utils import check_dir, chunked, converter, file_name, read, write
 
 
@@ -17,7 +17,7 @@ def cli():
 
 
 @click.command(
-    help="Выполняет запрос к серверу Pubchem, извлекает данные из ответа сервера и пишет их в файл"
+    help="Выполняет запрос к серверу Pubchem, извлекает данные из ответа сервера и пишет их в файл."
 )
 @click.option(
     "--out-dir",
@@ -27,23 +27,30 @@ def cli():
     "на момент создания файла.",
 )
 @click.option(
-    "--start", default=1, required=True, type=int, help="Первое значение из запрашиваемых CID"
+    "--start", required=True, type=int, help="Первое значение из запрашиваемых CID."
 )
 @click.option(
-    "--stop", default=201, required=True, type=int, help="Последнее значение из запрашиваемых CID"
+    "--stop", required=True, type=int, help="Последнее значение из запрашиваемых CID."
 )
 @click.option(
     "--size",
     default=100,
-    required=True,
     type=int,
-    help="Максимальное число идентификаторов в одном запросе",
+    help="Максимальное число идентификаторов в одном запросе.",
 )
-def fetch(out_dir: pathlib.Path, start: int, stop: int, size: int) -> None:
-    data = execute_request(start, stop, size)
+@click.option(
+    "--f-size",
+    default=1000,
+    type=int,
+    help="Максимальное число идентификаторов в сохраняемом файле.",
+)
+def fetch(out_dir: pathlib.Path, start: int, stop: int, size: int, f_size) -> None:
     check_dir(out_dir)
-    file = file_name(out_dir)
-    write(file, list(data.values()))
+    data = execute_requests(start, stop, size)
+    chunks = chunked(data, f_size)
+    for chunk in chunks:
+        file = file_name(out_dir)
+        write(file, chunk)
 
 
 @click.command(

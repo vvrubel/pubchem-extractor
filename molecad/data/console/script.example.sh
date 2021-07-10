@@ -3,7 +3,7 @@
 # Run script from project directory that contains `.env` file
 
 file=$JSON
-dir=$OUT_DIR
+dir=${OUT_DIR}
 f_dir=${dir}/files
 name=$MONGO_DB_COLLECTION
 
@@ -15,6 +15,7 @@ poetry run python -m molecad.data.console fetch \
        --start 1 \
        --stop 1001 \
        --size 100
+       --f-size 1000
 
 
 echo Split $file to $f_dir

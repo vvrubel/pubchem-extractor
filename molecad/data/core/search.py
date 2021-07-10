@@ -1,9 +1,8 @@
 from typing import Any, Dict
 
-from mongordkit.Database import create, write, utils, registration
-from mongordkit.Search import similarity, substructure, utils
+from mongordkit.Database import registration
+from mongordkit.Search import substructure
 from rdkit import Chem
-import pymongo
 
 from molecad.data.core.db import db, retrieve_smiles
 

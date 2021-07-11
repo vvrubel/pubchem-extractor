@@ -3,9 +3,10 @@ from typing import Any, Dict, List
 
 import click
 
-from molecad.data.core.db import drop_collection, upload_data
-from molecad.data.core.downloader import execute_requests
-from molecad.data.core.utils import check_dir, chunked, converter, file_name, read, write
+from molecad.data.db import drop_collection, upload_data
+from molecad.data.downloader import execute_requests
+from molecad.data.utils import check_dir, chunked, converter, file_name, read, write
+from molecad.settings import setup
 
 
 @click.group(
@@ -18,13 +19,6 @@ def cli():
 
 @click.command(
     help="Выполняет запрос к серверу Pubchem, извлекает данные из ответа сервера и пишет их в файл."
-)
-@click.option(
-    "--out-dir",
-    required=True,
-    type=pathlib.Path,
-    help="Путь до output-директории, в которую будет записан JSON-файл – не должна существовать "
-    "на момент создания файла.",
 )
 @click.option(
     "--start", required=True, type=int, help="Первое значение из запрашиваемых CID."
@@ -44,8 +38,9 @@ def cli():
     type=int,
     help="Максимальное число идентификаторов в сохраняемом файле.",
 )
-def fetch(out_dir: pathlib.Path, start: int, stop: int, req_size: int, f_size: int) -> None:
-    new_dir = check_dir(out_dir, start, stop)
+def fetch(start: int, stop: int, req_size: int, f_size: int) -> None:
+    fetch_dir = pathlib.Path(setup.fetch_dir)
+    new_dir = check_dir(fetch_dir, start, stop)
     data = execute_requests(start, stop, req_size)
     chunks = chunked(data, f_size)
     for chunk in chunks:

@@ -1,11 +1,10 @@
 #!/bin/bash
 
 
-echo Downloading data into $dir
+echo Downloading data into ./data/fetch
 poetry run python -m molecad.data.console fetch \
-       --out-dir ./molecad/data/out/fetch \
-       --start 1 \
-       --stop 1001 \
+       --start 700001 \
+       --stop 800001 \
        --req-size 100 \
        --f-size 1000
 

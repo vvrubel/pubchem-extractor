@@ -1,6 +1,6 @@
 import pytest
 
-from molecad.data.core.downloader import (
+from molecad.data.downloader import (
     build_url,
     chunked,
     generate_ids,
@@ -9,7 +9,7 @@ from molecad.data.core.downloader import (
     prepare_request,
     request_data_json,
 )
-from molecad.data.core.utils import (
+from molecad.data.utils import (
     concat,
     join_w_comma,
 )

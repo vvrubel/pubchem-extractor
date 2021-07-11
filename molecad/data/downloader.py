@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Type
 import requests
 from loguru import logger
 
-from molecad.data.core.utils import (
+from molecad.data.utils import (
     chunked,
     concat,
     generate_ids,

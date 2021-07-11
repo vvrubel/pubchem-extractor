@@ -218,7 +218,7 @@ def delay_iterations(
             time.sleep(delay)
 
 
-def execute_requests(start: int, stop: int, maxsize: int) -> Iterator[Dict[str, Any]]:
+def execute_requests(start: int, stop: int, maxsize: int = 100) -> Iterator[Dict[str, Any]]:
     """
     .. note:: В текущей версии сервиса доступен запрос свойств молекул из базы данных ``Compound``.
     Аргументы функции ``generate_ids(start, stop)`` по умолчанию равны 1 и 201 соответственно и

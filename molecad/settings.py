@@ -10,12 +10,11 @@ class Settings(BaseSettings):
     mongo_user = Field("", env="MONGO_USER")
     mongo_password = Field("", env="MONGO_PASSWORD")
     mongo_db_name = Field("molecad", env="MONGO_DB_NAME")
-    mongo_db_collection = Field("mol_props", env="MONGO_DB_COLLECTION")
+    molprops_collection = Field("molprops", env="MONGO_DB_COLLECTION")
 
     project_dir = Field(".", env="PROJ_DIR")
-    fetch_dir = Field("./molecad/downloads/fetch", env="FETCH_DIR")
-    split_file = Field("./molecad/downloads/split", env="SPLIT_DIR")
-    saved_json = Field("", env="JSON")
+    fetch_dir = Field("./data/fetch", env="FETCH_DIR")
+    split_dir = Field("./data/split", env="SPLIT_DIR")
 
     component_name = "molecad"
     api_version: str = "/v0"

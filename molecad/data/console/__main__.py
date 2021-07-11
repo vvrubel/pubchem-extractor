@@ -33,7 +33,7 @@ def cli():
     "--stop", required=True, type=int, help="Последнее значение из запрашиваемых CID."
 )
 @click.option(
-    "--size",
+    "--req-size",
     default=100,
     type=int,
     help="Максимальное число идентификаторов в одном запросе.",
@@ -44,12 +44,12 @@ def cli():
     type=int,
     help="Максимальное число идентификаторов в сохраняемом файле.",
 )
-def fetch(out_dir: pathlib.Path, start: int, stop: int, size: int, f_size) -> None:
-    check_dir(out_dir)
-    data = execute_requests(start, stop, size)
+def fetch(out_dir: pathlib.Path, start: int, stop: int, req_size: int, f_size: int) -> None:
+    new_dir = check_dir(out_dir, start, stop)
+    data = execute_requests(start, stop, req_size)
     chunks = chunked(data, f_size)
     for chunk in chunks:
-        file = file_name(out_dir)
+        file = file_name(new_dir)
         write(file, chunk)
 
 
@@ -58,7 +58,7 @@ def fetch(out_dir: pathlib.Path, start: int, stop: int, size: int, f_size) -> No
     "MongoDB, что необходимо из-за внутренних ограничений MongoDB на количество "
     "документов, загружаемых за один раз одним файлом."
 )
-@click.option("--file", required=True, type=pathlib.Path, help="Путь до большого JSON-файла")
+@click.argument("file", type=pathlib.Path)
 @click.option(
     "--f-dir",
     required=True,

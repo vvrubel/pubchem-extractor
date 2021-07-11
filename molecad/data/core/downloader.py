@@ -6,6 +6,7 @@ from loguru import logger
 
 from molecad.data.core.utils import (
     chunked,
+    concat,
     generate_ids,
     join_w_comma,
 )
@@ -53,7 +54,9 @@ def input_specification(domain: str, namespace: str, identifiers: str) -> str:
     :return: строка, отформатированная по типу "<domain>/<namespace>/<identifiers>",
     которая является первой частью URL-адреса.
     """
-    return f"{domain}/{namespace}/{identifiers}"
+    # return f"{domain}/{namespace}/{identifiers}"
+    args = [domain, namespace, identifiers]
+    return concat(*args)
 
 
 def operation_specification(operation: str, tags: Optional[str] = None) -> str:

@@ -10,14 +10,12 @@ from molecad.errors import DirExistsError
 T = TypeVar("T")
 
 
-def generate_ids(start: int = 1, stop: int = 201) -> Iterator[int]:
+def generate_ids(start: int, stop: int) -> Iterator[int]:
     """
     Простой генератор значений CID.
     .. note:: В рамках формирования базы данных интервал идентификаторов был равен (1, 500001).
-    :param start: по умолчанию равно 1, но может быть заменено на любое положительное число -
-    для скачивания порциями равно значению ``stop`` в предыдущей порции загрузки.
-    :param stop: любое значение до 156 миллионов; в тестовом режиме установлено значение 201 для
-    получения быстрого результата.
+    :param start: любые целые положительные числа такие, что ``start < stop``.
+    :param stop: любые целые положительные числа такие, что ``start < stop``.
     :return: генератор целых положительных чисел.
     """
     for n in range(start, stop):
@@ -54,17 +52,39 @@ def join_w_comma(*args: T) -> str:
     return ",".join(f"{i}" for i in args)
 
 
-def check_dir(dir_path: Path) -> None:
+def concat(*args: T, sep="/") -> str:
     """
-    Пробует создать директорию, если директория существует по указанному пути,
-    то кидает ошибку и просит указать другое имя.
+    Функция принимает на вход последовательность аргументов, приводит каждый из них к строке,
+    после чего конкатенирует эти строки с помощью аргумента, переданного в `sep`.
+    :param args: последовательность аргументов одинакового типа.
+    :param sep: строка, являющаяся разделителем, с помощью которой будут конкатенированы
+    элементы переданной в `args` последовательности.
+    Если значение не определено, то по умолчанию будет использоваться "/".
+    :return: строка, соединенная с помощью `sep`.
+    """
+    return sep.join(f"{i}" for i in args)
+
+
+def check_dir(dir_path: Path, start_id: int, stop_id: int) -> Path:
+    """
+    Рекурсивная функция, которая пробует создать поддиректорию c именем `name` в директории
+    `dir_path`, если такая поддиректория уже существует, то к текущему значению `name`
+    прибавляется 1, и вызывается снова с текущим значением
     :param dir_path: путь до несуществующей директории.
+    :param start_id:
+    :param stop_id:
+    :return: путь до созданной папки.
     """
+
+    name = concat(start_id, stop_id, sep="–")
     try:
-        dir_path.mkdir(parents=True, exist_ok=False)
+        new_dir = Path(dir_path).resolve() / str(name)
+        new_dir.mkdir(parents=True, exist_ok=False)
     except DirExistsError:
-        logger.info("Директория уже существует. Создайте поддиректорию.")
+        logger.info("Директория уже существует.")
         raise
+    else:
+        return new_dir
 
 
 def file_name(dir_path: Path) -> Path:

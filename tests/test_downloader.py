@@ -5,10 +5,13 @@ from molecad.data.core.downloader import (
     chunked,
     generate_ids,
     input_specification,
-    join_w_comma,
     operation_specification,
     prepare_request,
     request_data_json,
+)
+from molecad.data.core.utils import (
+    concat,
+    join_w_comma,
 )
 from molecad.types_ import (
     Domain,
@@ -37,6 +40,46 @@ BAD_EXAMPLE = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1/property
 )
 def test_join_w_comma(inp, expect):
     res = join_w_comma(*inp)
+    assert res == expect
+
+
+@pytest.mark.parametrize(
+    "inp, expect",
+    [
+        ([1, 2, 3], "1,2,3"),
+        ([1], "1"),
+        ("1", "1"),
+    ],
+)
+def test_concat_w_comma(inp, expect):
+    res = concat(*inp, sep=",")
+    assert res == expect
+
+
+@pytest.mark.parametrize(
+    "inp, expect",
+    [
+        ([1, 2, 3], "1–2–3"),
+        ([1, 2], "1–2"),
+        ([1], "1"),
+        ("1", "1"),
+    ],
+)
+def test_concat_w_dash(inp, expect):
+    res = concat(*inp, sep="–")
+    assert res == expect
+
+
+@pytest.mark.parametrize(
+    "inp, expect",
+    [
+        ([1, 2, 3], "1/2/3"),
+        ([1], "1"),
+        ("1", "1"),
+    ],
+)
+def test_concat_w_slash(inp, expect):
+    res = concat(*inp)
     assert res == expect
 
 

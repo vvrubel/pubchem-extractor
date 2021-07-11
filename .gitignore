@@ -1,5 +1,5 @@
 # project
-molecad/data/out/*
+molecad/data/out*/*
 
 # ci
 .gitlab-ci.yml
@@ -20,6 +20,7 @@ build/
 develop-eggs/
 dist/
 downloads/
+downloads/*
 eggs/
 .eggs/
 lib/

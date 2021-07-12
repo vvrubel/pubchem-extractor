@@ -1,11 +1,14 @@
 import time
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple, \
-                                                                TypeVar, Union
-
-import time
 from typing import (
-    Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple,
-    TypeVar, Union,
+    Any,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    TypeVar,
+    Union,
 )
 
 import requests
@@ -15,7 +18,6 @@ from molecad.data.utils import (
     chunked,
     concat,
     generate_ids,
-    timer,
 )
 from molecad.errors import (
     BadDomainError,
@@ -46,21 +48,21 @@ def url_builder(
     ids: Union[IdT, Iterable[IdT]],
     *,
     domain: str,
-    namespace: Tuple[str, Optional[str]],
+    namespace_prefix: str,
+    namespace_suffix: Optional[str] = None,
     operation: str,
     tags: Optional[Sequence[str]] = None,
-    output: str
+    output: str,
 ) -> str:
     """
     Команда генерирует строку URL-адреса, необходимую для выполнения запроса в службу PubChem.
-    :param ids: число, строка или последовательность из строковых значений/чисел,
+    :param ids: число, строка или последовательность из значений одинакового типа,
     которые интерпретируются как идентификаторы соединений; последовательность идентификаторов может
-    быть получена в результате выполнения функции ``generate_ids`` или ``chunked``, полученные
-    значения передаются в функцию ``join_w_comma``, а затем в ``input_specification``.
-    :param domain: принимает значение из класса ``Domain`` и напрямую передается в функцию
-    ``input_specification``. По умолчанию установлено значение ``Domain.COMPOUND``.
+    быть получена в результате выполнения функции ``generate_ids`` или ``chunked``.
+    :param domain: принимает значение из класса ``Domain``, по умолчанию установлено значение
+    ``Domain.COMPOUND``.
     .. note:: В текущей версии сервиса доступен поиск только по базе данных ``Compound``.
-    :param namespace: передается в функцию ``joined_namespace`` в качестве ``prefix``,
+    :param namespace_prefix: передается в функцию ``joined_namespace`` в качестве ``prefix``,
     который может принимать значения из классов ``NamespCmpd`` и ``PrefixSearch`` в данной
     версии сервиса. Значение по умолчанию - ``NamespCmpd.CID``.
     .. note:: В текущей версии сервиса доступен поиск только по пространству имен ``CID``.
@@ -85,8 +87,10 @@ def url_builder(
     if not is_compound(domain):
         raise BadDomainError
 
-    if is_simple_namespace(*namespace) or is_namespace_search(*namespace):
-        joined_namespaces = concat(*namespace)
+    if is_simple_namespace(namespace_prefix, namespace_suffix):
+        joined_namespaces = namespace_prefix
+    elif is_namespace_search(namespace_prefix, namespace_suffix):
+        joined_namespaces = concat(namespace_prefix, namespace_suffix)
     else:
         raise BadNamespaceError
 
@@ -94,14 +98,14 @@ def url_builder(
     input_spec = concat(domain, joined_namespaces, joined_identifiers)
 
     if is_complex_operation(operation, tags):
-        joined_tags = concat(*tags)
+        joined_tags = concat(*tags, sep=",")
         operation_spec = concat(operation, joined_tags)
     elif is_simple_operation(operation, tags):
         operation_spec = operation
     else:
         raise BadOperationError
 
-    url = concat(input_spec, operation_spec, output)
+    url = concat(BASE_URL, input_spec, operation_spec, output)
     return url
 
 
@@ -149,38 +153,39 @@ def delay_iterations(
             time.sleep(delay)
 
 
-@timer
 def execute_requests(start: int, stop: int, maxsize: int = 100) -> Iterator[Dict[str, Any]]:
     """
-    .. note:: В текущей версии сервиса доступен запрос свойств молекул из базы данных ``Compound``.
-    Аргументы функции ``generate_ids(start, stop)`` по умолчанию равны 1 и 201 соответственно и
-    могут не указываться явно, что соответствует тестовым запросам к серверу Pubchem;
-    в случае формирования базы данных эти значения должны быть явно указаны в качестве
-    аргументов, как 1 и 500001 соответственно. Для последующих запросов ``start`` = ``stop`` от
-    предыдущего запроса, а ``stop`` увеличивается на 500000.
-    Второй аргумент, передаваемый в функцию ``chunked`` - ``chunk_size``, в рамках для тестовых
-    запросов по умолчанию равен 100 и может не указываться явно; при формировании базы данных со
-    свойствами молекул должен быть равен 1000.
+    Извлекает и сохраняет информацию из базы данных Pubchem – 'Compound'; генерирует списки
+    идентификаторов равной длины, исходя из параметров в сигнатуре функции, и передает их вместе с
+    остальными параметрами, определенными внутри функции, в ``url_builder``, после чего посыпает
+    запрос по сгенерированному URL-адресу, учитывая ограничения на количество запросов к серверам
+    Pubchem.
+    :param start: Первое значение из запрашиваемых CID.
+    :param stop: Последнее значение из запрашиваемых CID.
+    :param maxsize: Максимальное число идентификаторов в одном запросе, по умолчанию равно 100.
+    :return: итератор по записям из базы данных Pubchem - 'Compound'.
     """
+    tags = (
+        PropertyTags.MOLECULAR_FORMULA,
+        PropertyTags.MOLECULAR_WEIGHT,
+        PropertyTags.CANONICAL_SMILES,
+        PropertyTags.INCHI,
+        PropertyTags.IUPAC_NAME,
+        PropertyTags.XLOGP,
+        PropertyTags.H_BOND_DONOR_COUNT,
+        PropertyTags.H_BOND_ACCEPTOR_COUNT,
+        PropertyTags.ROTATABLE_BOND_COUNT,
+        PropertyTags.ATOM_STEREO_COUNT,
+        PropertyTags.BOND_STEREO_COUNT,
+        PropertyTags.VOLUME_3D
+    )
     d = {
         "domain": Domain.COMPOUND,
-        "namespace": (NamespCmpd.CID, None),
+        "namespace_prefix": NamespCmpd.CID,
+        "namespace_suffix": None,
         "operation": OperationComplex.PROPERTY,
-        "tags": (
-            PropertyTags.MOLECULAR_FORMULA,
-            PropertyTags.MOLECULAR_WEIGHT,
-            PropertyTags.CANONICAL_SMILES,
-            PropertyTags.INCHI,
-            PropertyTags.IUPAC_NAME,
-            PropertyTags.XLOGP,
-            PropertyTags.H_BOND_DONOR_COUNT,
-            PropertyTags.H_BOND_ACCEPTOR_COUNT,
-            PropertyTags.ROTATABLE_BOND_COUNT,
-            PropertyTags.ATOM_STEREO_COUNT,
-            PropertyTags.BOND_STEREO_COUNT,
-            PropertyTags.VOLUME_3D,
-        ),
-        "output": Out.JSON
+        "tags": tags,
+        "output": Out.JSON,
     }
 
     chunks = chunked(generate_ids(start, stop), maxsize)
@@ -202,3 +207,7 @@ def execute_requests(start: int, stop: int, maxsize: int = 100) -> Iterator[Dict
             logger.debug("Пришел ответ: {}", res)
             for rec in res:
                 yield rec
+
+
+if __name__ == "__main__":
+    execute_requests(1, 100, 100)

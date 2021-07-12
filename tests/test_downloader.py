@@ -11,6 +11,13 @@ from molecad.data.utils import (
 from molecad.types_ import (
     Domain,
     NamespCmpd,
+    Operation,
+    OperationComplex,
+    PropertyTags,
+)
+from molecad.validator import (
+    is_complex_operation,
+    is_simple_operation,
 )
 
 EXAMPLE1 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244/property/MolecularFormula,InChIKey/JSON"
@@ -32,11 +39,13 @@ def test_chunked(start, stop, expect):
     chunks.extend(chunked(ids, 2))
     assert chunks == expect
 
-#TODO
+
 @pytest.mark.parametrize(
     "inp, expect",
     [
         ([1, 2, 3], "1,2,3"),
+        ((1, 2, 3), "1,2,3"),
+        ((1, 2, 3,), "1,2,3"),
         ([1], "1"),
         ("1", "1"),
         ([], ""),
@@ -64,14 +73,6 @@ def test_concat_w_slash(inp, expect):
     [
         (Domain.COMPOUND, NamespCmpd.CID, 2244, "compound/cid/2244"),
         (Domain.COMPOUND, NamespCmpd.CID, "1,2,3", "compound/cid/1,2,3"),
-        ("compound", NamespCmpd.CID, "1,2,3", "compound/cid/1,2,3"),
-        ("compound", "cid", "1,2,3", "compound/cid/1,2,3"),
-        (
-            Domain.COMPOUND,
-            "xref/PatentID",
-            "EP0001699A2",
-            "compound/xref/PatentID/EP0001699A2",
-        ),
     ],
 )
 def test_input_specification(domain, namespace, ids, expect):
@@ -79,29 +80,23 @@ def test_input_specification(domain, namespace, ids, expect):
     assert res == expect
 
 
-@pytest.mark.parametrize(
-    "op, tags, expect",
-    [
-        ("record", None, "record"),
-        ("property", "MolecularFormula,InChIKey", "property/MolecularFormula,InChIKey"),
-    ],
-)
-def test_operation_specification(op, tags, expect):
-    res = concat(op, tags)
-    assert res == expect
+def test_simple_operation():
+    operation = Operation.RECORD
+    tags = None
+    expect = "record"
+    if is_simple_operation(operation, tags):
+        res = operation
+        assert res == expect
 
-#
-# @pytest.mark.parametrize(
-#     "inp, op, out, expect",
-#     [
-#         ("compound/cid/2244", "property/MolecularFormula,InChIKey", "JSON", EXAMPLE1),
-#         ("compound/cid/2244", "record", "PNG", EXAMPLE2),
-#         ("compound/cid/2244", Operation.RECORD, Out.PNG, EXAMPLE2),
-#     ],
-# )
-# def test_build_url(inp, op, out, expect):
-#     res = url_builder(inp, op, out)
-#     assert res == expect
+
+def test_complex_operation():
+    operation = OperationComplex.PROPERTY
+    tags = (PropertyTags.MOLECULAR_FORMULA, PropertyTags.INCHI)
+    expect = "property/MolecularFormula,InChI"
+    if is_complex_operation(operation, tags):
+        joined_tags = concat(*tags, sep=",")
+        res = concat(operation, joined_tags)
+        assert res == expect
 
 
 def test_request_data_json():

@@ -14,7 +14,7 @@ class Connect:
             port=setup.mongo_port,
             username=setup.mongo_user,
             password=setup.mongo_password,
-            authSource=setup.mongo_auth_source,
+            authSource=setup.mongo_db_name,
         )
 
 

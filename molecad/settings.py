@@ -1,3 +1,4 @@
+import pymongo
 from pydantic import (
     BaseSettings,
     Field,
@@ -26,6 +27,17 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+
+    @property
+    def get_db(self):
+        db = pymongo.MongoClient(
+            host=self.mongo_host,
+            port=self.mongo_port,
+            username=self.mongo_user,
+            password=self.mongo_password,
+            authSource=self.mongo_db_name
+        )[self.mongo_db_name]
+        return db
 
 
 setup = Settings()

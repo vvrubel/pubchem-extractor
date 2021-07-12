@@ -1,5 +1,12 @@
 import time
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, TypeVar, Union
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple, \
+                                                                TypeVar, Union
+
+import time
+from typing import (
+    Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple,
+    TypeVar, Union,
+)
 
 import requests
 from loguru import logger
@@ -8,7 +15,7 @@ from molecad.data.utils import (
     chunked,
     concat,
     generate_ids,
-    join_w_comma,
+    timer,
 )
 from molecad.errors import (
     BadDomainError,
@@ -18,17 +25,14 @@ from molecad.errors import (
 from molecad.types_ import (
     Domain,
     NamespCmpd,
-    Operation,
     OperationComplex,
     Out,
     PropertyTags,
-    SearchPrefix,
-    SearchSuffix,
 )
 from molecad.validator import (
     is_complex_operation,
+    is_compound,
     is_namespace_search,
-    is_not_compound,
     is_simple_namespace,
     is_simple_operation,
 )
@@ -38,100 +42,25 @@ T = TypeVar("T")
 BASE_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
 
 
-def input_specification(domain: str, namespace: str, identifiers: str) -> str:
-    """
-    Функция, которая форматирует первую часть URL-адреса для запроса в базы данных Pubchem. Эта
-    часть определяет, какие записи следует использовать в качестве темы для запроса. Функция
-    форматирует параметры для дальнейшей передачи в функцию ``build_url``.
-    :param domain: принимает значения из класса ``Domain``.
-    .. note:: В текущей версии сервиса доступен поиск только по базе данных ``Compound``.
-    :param namespace: принимает значения в зависимости от определенного ранее параметра
-    ``domain``. В общем случае может иметь простой и составной характер, поэтому значение должно
-    быть предварительно обработано функцией  ``joined_namespaces``.
-    :param identifiers: передаваемое значение должно быть целым числом или строкой; если необходимо
-    указать последовательность идентификаторов, то они должны быть предварительно переданы в
-    функцию ``joined_identifiers``.
-    :return: строка, отформатированная по типу "<domain>/<namespace>/<identifiers>",
-    которая является первой частью URL-адреса.
-    """
-    # return f"{domain}/{namespace}/{identifiers}"
-    args = [domain, namespace, identifiers]
-    return concat(*args)
-
-
-def operation_specification(operation: str, tags: Optional[str] = None) -> str:
-    """
-    Часть URL-адреса указывает службе Pubchem, что делать с данными, определенными в первой
-    части URL-адреса, например, вы можете получить конкретные свойства соединений. Функция
-    форматирует параметры для дальнейшей передачи в функцию ``build_url``.
-    :param operation:  принимает значения в зависимости от определенного ранее параметра
-    ``domain``. Если значение не определено, то по умолчанию извлекается вся запись.
-    :param tags: определяется только в случае если ``operation`` == ``Operation.PROPERTY``,
-    иначе не указывается; строка содержит перечень из запрашиваемых тегов, доступных для данной
-    операции, которые предварительно были переданы в функцию ``join_w_comma``.
-    :return: строка, которая является второй частью URL-адреса.
-    """
-    if tags is None:
-        return f"{operation}"
-    else:
-        return f"{operation}/{tags}"
-
-
-def build_url(input_spec: str, operation_spec: str, output_format: str) -> str:
-    """
-    Команда генерирует строку URL-адреса, необходимую для выполнения запроса в службу PubChem.
-    Структура URL-адреса состоит из трех частей, которые предварительно были приведены к
-    надлежащему формату.
-    :param input_spec: значение полученное из функции ``input_specification``.
-    :param operation_spec: значение полученное из функции ``operation_specification``.
-    :param output_format: формат выходных данных, принимающий значение из класса ``Out``.
-    :return: URL-адрес, используемый в качестве аргумента при вызове функции ``request_data``,
-    которая осуществляет запрос в базу данных Pubchem.
-    """
-    return f"{BASE_URL}/{input_spec}/{operation_spec}/{output_format}"
-
-
-def joined_namespace(prefix: str, suffix: Optional[str] = None) -> str:
-    """
-    Функция форматирует входной параметр ``namespace`` для передачи его в функцию
-    ``input_specification``. В текущей версии сервиса реализована только для значений из базы
-    данных ``Compound``.
-    :param prefix: если переменная имеет составной характер, то значение должно быть определено
-    из класса ``PrefixSearch``, иначе - из класса ``NamespCmpd``.
-    :param suffix: если переменная имеет составной характер, то значение должно быть определено
-    из класса ``SuffixSearch``, иначе оно не указывается.
-    :return: отформатированное значение ``namespace``, которое в виде строки передается в вызов
-    функции ``input_specification``, а при вводе неподходящих параметров кидает ошибку
-    ``NamespaceError``.
-    """
-    if is_simple_namespace(prefix, suffix):
-        return f"{prefix}"
-    elif is_namespace_search(prefix, suffix):
-        return f"{prefix}/{suffix}"
-    else:
-        raise BadNamespaceError
-
-
-def prepare_request(
-    identifiers: Sequence[IdT],
-    domain: Domain = Domain.COMPOUND,
-    namespace_prefix: Union[NamespCmpd, SearchPrefix] = NamespCmpd.CID,
-    namespace_suffix: Optional[SearchSuffix] = None,
-    operation: Union[Operation, OperationComplex] = Operation.RECORD,
+def url_builder(
+    ids: Union[IdT, Iterable[IdT]],
+    *,
+    domain: str,
+    namespace: Tuple[str, Optional[str]],
+    operation: str,
     tags: Optional[Sequence[str]] = None,
-    output: Out = Out.JSON,
+    output: str
 ) -> str:
     """
-    Подготавливает аргументы и передает их в функцию ``build_url``.
-    .. note:: В текущей версии сервиса доступен запрос свойств молекул из базы данных ``Compound``.
-    :param identifiers: число, строка или последовательность из строковых значений/чисел,
+    Команда генерирует строку URL-адреса, необходимую для выполнения запроса в службу PubChem.
+    :param ids: число, строка или последовательность из строковых значений/чисел,
     которые интерпретируются как идентификаторы соединений; последовательность идентификаторов может
     быть получена в результате выполнения функции ``generate_ids`` или ``chunked``, полученные
     значения передаются в функцию ``join_w_comma``, а затем в ``input_specification``.
     :param domain: принимает значение из класса ``Domain`` и напрямую передается в функцию
     ``input_specification``. По умолчанию установлено значение ``Domain.COMPOUND``.
     .. note:: В текущей версии сервиса доступен поиск только по базе данных ``Compound``.
-    :param namespace_prefix: передается в функцию ``joined_namespace`` в качестве ``prefix``,
+    :param namespace: передается в функцию ``joined_namespace`` в качестве ``prefix``,
     который может принимать значения из классов ``NamespCmpd`` и ``PrefixSearch`` в данной
     версии сервиса. Значение по умолчанию - ``NamespCmpd.CID``.
     .. note:: В текущей версии сервиса доступен поиск только по пространству имен ``CID``.
@@ -152,58 +81,60 @@ def prepare_request(
     .. note:: В текущей версии сервиса получение ответа от сервера возможно только в формате JSON.
     :return: URL-адрес, который используется для запроса в базу данных Pubchem.
     """
-    if is_not_compound(domain):
-        raise BadDomainError
-    joined_identifiers = join_w_comma(*identifiers)
-    namespace = joined_namespace(namespace_prefix, namespace_suffix)
-    input_spec = input_specification(domain, namespace, joined_identifiers)
 
-    if is_complex_operation(operation, tags) and tags is not None:
-        joined_tags = join_w_comma(*tags)
-        operation_spec = operation_specification(operation, joined_tags)
+    if not is_compound(domain):
+        raise BadDomainError
+
+    if is_simple_namespace(*namespace) or is_namespace_search(*namespace):
+        joined_namespaces = concat(*namespace)
+    else:
+        raise BadNamespaceError
+
+    joined_identifiers = concat(*ids, sep=",")
+    input_spec = concat(domain, joined_namespaces, joined_identifiers)
+
+    if is_complex_operation(operation, tags):
+        joined_tags = concat(*tags)
+        operation_spec = concat(operation, joined_tags)
     elif is_simple_operation(operation, tags):
-        operation_spec = operation_specification(operation)
+        operation_spec = operation
     else:
         raise BadOperationError
-    url = build_url(input_spec, operation_spec, output)
+
+    url = concat(input_spec, operation_spec, output)
     return url
 
 
-def request_data_json(url: str, **params: str) -> List[Dict[str, Any]]:
+def request_property_data_json(url: str, **operation_options: str) -> List[Dict[str, Any]]:
     """
-    Функция отправляет синхронный запрос "GET" к серверам PUG REST баз данных Pubchem.
-    :param url: возвращается из функции ``prepare_request`` и является обязательным для всех
+    Функция добавляет параметры к URL, если они переданы в переменную ``operation_options`` и
+    отправляет синхронный GET-запрос к серверам PUG REST баз данных Pubchem.
+    Если бы вы создавали URL-адрес вручную, пары значений из словаря ``operation_options``
+    записывались бы в конец URL-адреса после знака ``?`` в виде ``key=value``, а при наличии
+    более одной пары последние объединялись знаком ``&``.
+    :param url: возвращается из функции ``url_builder`` и является обязательным для всех
     запросов.
-    :param params: может быть пустым словарем, если параметры ``operation`` не требуют иного,
-    иначе передается словарь со строковыми значениями, которые интерпретируются как ``operation
-    options``. Если бы вы создавали URL-адрес вручную, пары значений из словаря
-    записыварись бы в конец URL-адреса после знака ``?`` в виде ``key=value``, а при наличии
-    более одной пары объединялись знаком ``&``.
-    :return: ответ от сервера .. note:: В текущей версии сервиса реализуется получения ответа
-    только в формате JSON .
+    :param operation_options: может быть None или словарем из строк в случае определенных
+    значений параметра ``operation`` в функции ``url_builder``.
+    :return: ответ от сервера в формате JSON .
     """
-    try:
-        response = requests.get(url, params=params).json()
-    except KeyError:
-        breakpoint()
-    else:
-        return response["PropertyTable"]["Properties"]
+    response = requests.get(url, params=operation_options).json()
+    return response["PropertyTable"]["Properties"]
 
 
 def delay_iterations(
     iterable: Iterable[T], waiting_time: float = 60.0, maxsize: int = 400
 ) -> Iterator[T]:
     """
-    Ограничения на запросы, совершаемые в службу PubChem REST:
+    Ограничения на запросы, совершаемые в службу PubChem PUG REST:
     * Не больше 5 запросов в секунду.
     * Не больше 400 запросов в минуту.
     * Суммарное время обработки запросов, отправленных в течение минуты, не должно превышать 300
     секунд.
-    :param iterable: последовательности идентификаторов, полученных из функции ``generate_ids``
-    или ``chunked``.
+    :param iterable: последовательности идентификаторов, полученных из функции ``chunked``.
     :param waiting_time: 60 секунд.
     :param maxsize: 400 запросов.
-    :return: генерирует последовательность в соответствии с ограничениями серверов Pubchem.
+    :return: генерирует последовательность в соответствии с ограничениями Pubchem.
     """
     window = []
     for i in iterable:
@@ -218,6 +149,7 @@ def delay_iterations(
             time.sleep(delay)
 
 
+@timer
 def execute_requests(start: int, stop: int, maxsize: int = 100) -> Iterator[Dict[str, Any]]:
     """
     .. note:: В текущей версии сервиса доступен запрос свойств молекул из базы данных ``Compound``.
@@ -230,47 +162,43 @@ def execute_requests(start: int, stop: int, maxsize: int = 100) -> Iterator[Dict
     запросов по умолчанию равен 100 и может не указываться явно; при формировании базы данных со
     свойствами молекул должен быть равен 1000.
     """
-    domain = Domain.COMPOUND
-    namespace_prefix = NamespCmpd.CID
-    namespace_suffix = None
-    operation = OperationComplex.PROPERTY
-    tags = (
-        PropertyTags.MOLECULAR_FORMULA,
-        PropertyTags.MOLECULAR_WEIGHT,
-        PropertyTags.CANONICAL_SMILES,
-        PropertyTags.INCHI,
-        PropertyTags.IUPAC_NAME,
-        PropertyTags.XLOGP,
-        PropertyTags.H_BOND_DONOR_COUNT,
-        PropertyTags.H_BOND_ACCEPTOR_COUNT,
-        PropertyTags.ROTATABLE_BOND_COUNT,
-        PropertyTags.ATOM_STEREO_COUNT,
-        PropertyTags.BOND_STEREO_COUNT,
-        PropertyTags.VOLUME_3D,
-    )
-    output = Out.JSON
+    d = {
+        "domain": Domain.COMPOUND,
+        "namespace": (NamespCmpd.CID, None),
+        "operation": OperationComplex.PROPERTY,
+        "tags": (
+            PropertyTags.MOLECULAR_FORMULA,
+            PropertyTags.MOLECULAR_WEIGHT,
+            PropertyTags.CANONICAL_SMILES,
+            PropertyTags.INCHI,
+            PropertyTags.IUPAC_NAME,
+            PropertyTags.XLOGP,
+            PropertyTags.H_BOND_DONOR_COUNT,
+            PropertyTags.H_BOND_ACCEPTOR_COUNT,
+            PropertyTags.ROTATABLE_BOND_COUNT,
+            PropertyTags.ATOM_STEREO_COUNT,
+            PropertyTags.BOND_STEREO_COUNT,
+            PropertyTags.VOLUME_3D,
+        ),
+        "output": Out.JSON
+    }
 
-    # data = {}
-    t_start = time.monotonic()
     chunks = chunked(generate_ids(start, stop), maxsize)
-    for i in delay_iterations(chunks):
-        url = prepare_request(
-            i, domain, namespace_prefix, namespace_suffix, operation, tags, output
-        )
-        logger.debug("Делаю запрос по URL: {}", url)
+    for chunk in delay_iterations(chunks):
         try:
-            res = request_data_json(url)
+            url = url_builder(chunk, **d)
+            logger.debug("Делаю запрос по URL: {}", url)
+            res = request_property_data_json(url)
         except requests.HTTPError:
-            logger.error("Ошибочка вышла: {}", exc_info=True)
+            logger.error("Ошибка при выполнении запроса.", exc_info=True)
             break
+        except BadDomainError:
+            logger.error("В данной версии сервиса поиск возможен только по базе данных 'Compound'")
+        except BadNamespaceError:
+            logger.error("Пространство имен поиска по базе данных 'Compound' задано некорректно")
+        except BadOperationError:
+            logger.error("Ошибка при составлении операции")
         else:
             logger.debug("Пришел ответ: {}", res)
             for rec in res:
                 yield rec
-            # for k, v in zip(i, res):
-            #     data[k] = v
-    t_stop = time.monotonic()
-    t_run = t_stop - t_start
-    logger.info("Время, затраченное на операцию, равно {}", t_run)
-
-    # return data

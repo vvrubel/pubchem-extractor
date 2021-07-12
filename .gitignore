@@ -1,6 +1,7 @@
 # project
 ./data/
 notebooks/
+old.py
 
 # ci
 .gitlab-ci.yml

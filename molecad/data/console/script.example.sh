@@ -1,15 +1,15 @@
 #!/bin/bash
 
 
-echo Downloading data into ./data/fetch
+echo Downloading data into subfo ./data/fetch
 poetry run python -m molecad.data.console fetch \
-       --start 700001 \
-       --stop 800001 \
+       --start 1 \
+       --stop 500001 \
        --req-size 100 \
        --f-size 1000
 
 
-echo Split $file to $f_dir
+echo Split $file to ./data/split
 poetry run python -m molecad.data.console split \
        --file $file \
        --f-dir $f_dir \

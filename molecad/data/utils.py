@@ -1,13 +1,31 @@
+import functools
 import json
+import time
 import uuid
 from pathlib import Path
-from typing import Dict, Iterable, Iterator, List, TypeVar, Union
+from typing import Any, Dict, Iterable, Iterator, List, Tuple, TypeVar, Union
 
 from loguru import logger
 
 from molecad.errors import DirExistsError
 
 T = TypeVar("T")
+
+
+def timer(func):
+    """Длительность работы функции"""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.monotonic()
+        val = func(*args, **kwargs)
+        end = time.monotonic()
+        work_time = end - start
+        hour = work_time // 3600
+        mins = (work_time % 3600) // 60
+        sec = (work_time % 3600) % 60
+        print(f"Время выполнения {func.__name__!r}: {hour} ч., {mins} мин., {sec:.2f} сек.")
+        return val
+    return wrapper
 
 
 def generate_ids(start: int, stop: int) -> Iterator[int]:
@@ -39,16 +57,6 @@ def chunked(iterable: Iterable[T], maxsize: int) -> Iterable[List[T]]:
         yield chunk
 
 
-def join_w_comma(*args: T) -> str:
-    """
-    Функция принимает на вход последовательность аргументов, приводит каждый из них к строке,
-    после чего конкатенирует их с помощью запятой.
-    :param args: любая последовательность аргументов одинакового типа.
-    :return: строка разделенных запятой и без пробела значений.
-    """
-    return ",".join(f"{i}" for i in args)
-
-
 def concat(*args: T, sep="/") -> str:
     """
     Функция принимает на вход последовательность аргументов, приводит каждый из них к строке,
@@ -56,27 +64,32 @@ def concat(*args: T, sep="/") -> str:
     :param args: последовательность аргументов одинакового типа.
     :param sep: строка, являющаяся разделителем, с помощью которой будут соединены аргументы,
     переданные в `args`. Если значение не определено, то по умолчанию будет использоваться "/".
-    :return: строка, соединенная с помощью `sep`.
+    :return: строка, сконкатенированная с помощью `sep`.
     """
     return sep.join(f"{i}" for i in args)
 
 
-def check_dir(dir_path: Path, start_id: int, stop_id: int) -> Path:
+def parse_first_and_last(obj: List[Dict[str, Any]]) -> Tuple[int, int]:
+    pass
+
+
+def check_dir(dir_path: Path, first_id: int, last_id: int) -> Path:
     """
     Рекурсивная функция, которая пробует создать поддиректорию c именем `name` в директории
     `dir_path`, если такая поддиректория уже существует, то выбрасывает ошибку.
+    Имя поддиректории генерируется из значений запрашиваемых идентификаторов
     :param dir_path: Путь до поддиректории.
-    :param start_id: Первое значение из запрашиваемых идентификаторов.
-    :param stop_id: Последнее значение из запрашиваемых идентификаторов.
+    :param first_id: Первое значение из сохраняемых идентификаторов.
+    :param last_id: Последнее значение из сохраняемых идентификаторов.
     :return: Путь до созданной директории.
     """
 
-    name = concat(start_id, stop_id, sep="–")
+    name = concat(first_id, last_id, sep="–")
     try:
         new_dir = Path(dir_path).resolve() / str(name)
         new_dir.mkdir(parents=True, exist_ok=False)
     except DirExistsError:
-        logger.info("Директория уже существует.")
+        logger.error("Директория уже существует.")
         raise
     else:
         return new_dir

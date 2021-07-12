@@ -1,4 +1,9 @@
 from enum import Enum
+from typing import Callable, Iterable, Optional, Sequence, Tuple, TypeVar, Union
+
+from pydantic import BaseModel
+
+IdT = TypeVar("IdT")
 
 
 class Domain(str, Enum):
@@ -133,3 +138,25 @@ class Out(str, Enum):
     TXT = "TXT"
     ASNT = "ASNT"
     ASNB = "ASNB"
+
+
+class Namespace(BaseModel):
+    prefix: Union[NamespCmpd, SearchPrefix] = NamespCmpd.CID
+    suffix: Optional[SearchSuffix] = None
+
+
+class InputSpecification(BaseModel):
+    domain: Domain = Domain.COMPOUND
+    namespace: Tuple[Namespace]
+    identifiers: Callable[[Iterable[IdT]], str]
+
+
+class OperationSpecification(BaseModel):
+    prefix: Union[Operation, OperationComplex]
+    suffix: Sequence[PropertyTags]
+
+
+class UrlParts(BaseModel):
+    input_spec = InputSpecification
+    operation_spec = OperationSpecification
+    output: Out = Out.JSON

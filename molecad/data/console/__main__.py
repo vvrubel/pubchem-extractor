@@ -2,8 +2,9 @@ import pathlib
 from typing import Any, Dict, List
 
 import click
+import pymongo.collection
 
-from molecad.data.core.db import create_index, upload_data
+from molecad.data.core.db import upload_data
 from molecad.data.core.downloader import execute_request
 from molecad.data.core.utils import check_dir, chunked, converter, file_name, read, write
 
@@ -86,12 +87,10 @@ def split(file: pathlib.Path, f_dir: pathlib.Path, size: int) -> None:
 @click.option(
     "--collection",
     required=True,
-    type=str,
     help="Название коллекции MongoDB, в которую будут загружены файлы.",
 )
-def populate(f_dir: pathlib.Path, collection: str) -> None:
+def populate(f_dir: pathlib.Path, collection: pymongo.collection.Collection) -> None:
     n = 0
-    create_index(collection)
     click.echo(f"Произвожу импорт из папки {f_dir}")
     for file in f_dir.iterdir():
         click.echo(f"Импортирую файл {file}")

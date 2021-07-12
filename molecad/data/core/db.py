@@ -47,7 +47,6 @@ def upload_data(data: List[Dict[str, Any]], collection: pymongo.collection.Colle
     :param collection: Коллекция, в которую будут загружены данные.
     :return: Число документов, загруженных за цикл работы функции.
     """
-    create_index(mol, "CID")
     try:
         return collection.insert_many(data)
     except pymongo.errors.BulkWriteError:

@@ -1,6 +1,7 @@
 # project
-molecad/data/out*/*
-notebooks/*
+notebooks/
+./data/
+old.py
 
 # ci
 .gitlab-ci.yml
@@ -102,6 +103,7 @@ ipython_config.py
 
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow
 __pypackages__/
+
 # Celery stuff
 celerybeat-schedule
 celerybeat.pid

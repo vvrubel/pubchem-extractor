@@ -1,4 +1,25 @@
+import pymongo.errors
 from loguru import logger
+
+
+class BadDomainError(Exception):
+    pass
+
+
+class BadNamespaceError(Exception):
+    pass
+
+
+class BadOperationError(Exception):
+    pass
+
+
+class DirExistsError(FileExistsError):
+    pass
+
+
+class CreateIndexError(Exception):
+    pass
 
 
 class BaseAppException(Exception):
@@ -22,35 +43,3 @@ class BadRequestError(BaseAppException):
     @property
     def error_code(self) -> int:
         return 400
-
-
-class BadDomainError(BadRequestError):
-    def to_dict(self) -> dict:
-        return {"error": "Bad domain", "message": str(self)}
-
-    def __str__(self):
-        return 'В данной версии сервиса поиск возможен только по базе данных "Compound"'
-
-
-class BadNamespaceError(BadRequestError):
-    def to_dict(self) -> dict:
-        return {"error": "Bad namespace", "message": str(self)}
-
-    def __str__(self):
-        return 'Пространство имен для поиска по базе данных "Compound" задано некорректно'
-
-
-class BadOperationError(BadRequestError):
-    def to_dict(self) -> dict:
-        return {"error": "Bad operation", "message": str(self)}
-
-    def __str__(self):
-        return "Ошибка при составлении операции"
-
-
-class DirExistsError(BadRequestError, FileExistsError):
-    def to_dict(self) -> dict:
-        return {"error": "Bad directory path", "message": str(self)}
-
-    def __str__(self):
-        return "Указанная директория существует: укажите другое имя"

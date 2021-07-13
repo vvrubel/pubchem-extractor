@@ -1,31 +1,30 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
-import pymongo.collection
-import pymongo.errors
+import pymongo
 from loguru import logger
 from mongordkit.Database import registration
 from mongordkit.Search import substructure
 from rdkit import Chem
 
+from molecad.errors import CreateIndexError
+from molecad.validator import is_index_exist
 from molecad.settings import setup
-
-rdkit_schema = setup.get_db["test_rdkit_schema"]
-mol = setup.get_db["molecules"]
 
 
 def create_index(collection: pymongo.collection.Collection, index: str) -> None:
     """
-    Создает на коллекции уникальный индекс по указанному полю.
+    Пробует создать на коллекции уникальный индекс по указанному полю и говорит пользователю,
+    что он создан в случае успеха; если такой индекс уже задан на коллекции, говорит, что индекс
+    создать не получилось, так как он уже присутствует.
     :param collection: Коллекция, на которой будет создан индекс.
-    :param index: Строка, являющаяся полем в заданной коллекции, которое будет назначено в
-    роли индекса.
+    :param index: Поле-строка, которое будет назначено в качестве индекса.
     :return: None.
     """
-    try:
-        collection.create_index([(index, 1)], unique=True)
-    except pymongo.errors.OperationFailure:
-        logger.info(f"На коллекции {collection} индекс {index} уже присутствует.")
+    if is_index_exist(collection, index):
+        logger.warning(f"На коллекции {collection.name} индекс {index} уже создан.")
+        raise CreateIndexError
     else:
+        collection.create_index(index, unique=True)
         logger.info(f"На коллекции {collection} создан индекс – {index}.")
 
 
@@ -40,17 +39,17 @@ def drop_collection(collection: pymongo.collection.Collection) -> None:
     logger.info(f"Коллекция {collection} очищена.")
 
 
-def upload_data(data: List[Dict[str, Any]], collection: pymongo.collection.Collection) -> int:
+def upload_data(
+    data: List[Dict[str, Any]], collection: pymongo.collection.Collection
+) -> Tuple[int, int]:
     """
     Загружает данные в коллекцию.
     :param data: данные из файла, которые были получены с серверов Pubchem.
     :param collection: Коллекция, в которую будут загружены данные.
-    :return: Число документов, загруженных за цикл работы функции.
+    :return: Кортеж, где первый элемент – число загруженных документов, второй – незагруженных.
     """
-    try:
-        return collection.insert_many(data)
-    except pymongo.errors.BulkWriteError:
-        raise
+    res = collection.insert_many(data, ordered=False).inserted_ids
+    return len(res), (len(data) - len(res))
 
 
 def delete_without_smiles(collection: pymongo.collection.Collection) -> int:
@@ -66,10 +65,7 @@ def delete_without_smiles(collection: pymongo.collection.Collection) -> int:
     return count
 
 
-def retrieve_smiles(
-    collection: pymongo.collection.Collection,
-    filters: Optional[Dict[str, Any]] = None
-) -> Dict[Any, Any]:
+def retrieve_smiles(collection: pymongo.collection.Collection) -> Dict[Any, Any]:
     """
     Функция позволяет извлечь поле `CanonicalSMILES` из документов.
     :param collection: Коллекция, из которой будет извлекаться значение поля `CanonicalSMILES`.
@@ -77,7 +73,7 @@ def retrieve_smiles(
     отфильтровать данные.
     :return: Строка, являющаяся представлением молекулы в формате SMILES.
     """
-    cursor = collection.find({filters}, {"CanonicalSMILES": 1, "CID": 1, "_id": 0})
+    cursor = collection.find({}, {"CanonicalSMILES": 1, "CID": 1, "_id": 0})
     smiles = {}
     for rec in cursor:
         smiles[rec["CID"]] = rec["CanonicalSMILES"]
@@ -96,7 +92,10 @@ def schema_from_smiles(smiles: str) -> Dict[str, Any]:
     return scheme.generate_mol_doc(rdmol)
 
 
-def prepare_for_search():
+def prepare_for_search(
+    collection: pymongo.collection.Collection,
+    rdkit_schema: pymongo.collection.Collection
+) -> None:
     res = retrieve_smiles(mol)
     for cid, smiles in res.items():
         schema = schema_from_smiles(smiles)

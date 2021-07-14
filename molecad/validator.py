@@ -1,4 +1,5 @@
 from typing import Optional, Sequence
+
 import pymongo.collection
 
 from molecad.types_ import (
@@ -69,14 +70,10 @@ def check_tags(tags: Optional[Sequence[str]]) -> bool:
     :param tags: Последовательность, состоящая из строковых значений.
     :return: Если условие выполнено, то возвращается ``True``, иначе ``False``.
     """
-    checker = []
-    if tags is not None:
-        checker.append(True)
-        for tag in tags:
-            checker.append(isinstance(tag, PropertyTags))
-    else:
+    if tags is None:
         return False
-    return all(checker)
+    else:
+        return all(isinstance(tag, PropertyTags) for tag in tags)
 
 
 def is_index_exist(collection: pymongo.collection.Collection, index: str):

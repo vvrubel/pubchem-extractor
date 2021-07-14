@@ -14,11 +14,6 @@ from typing import (
 import requests
 from loguru import logger
 
-from molecad.data.utils import (
-    chunked,
-    concat,
-    generate_ids,
-)
 from molecad.errors import (
     BadDomainError,
     BadNamespaceError,
@@ -30,6 +25,11 @@ from molecad.types_ import (
     OperationComplex,
     Out,
     PropertyTags,
+)
+from molecad.utils import (
+    chunked,
+    concat,
+    generate_ids,
 )
 from molecad.validator import (
     is_complex_operation,
@@ -102,7 +102,7 @@ def url_builder(
     return url
 
 
-def request_property_data_json(url: str, **operation_options: str) -> List[Dict[str, Any]]:
+def request_data_json(url: str, **operation_options: str) -> List[Dict[str, Any]]:
     """
     Функция добавляет параметры к URL, если они переданы в переменную ``operation_options`` и
     отправляет синхронный GET-запрос к серверам PUG REST баз данных Pubchem.
@@ -158,7 +158,6 @@ def execute_requests(start: int, stop: int, maxsize: int = 100) -> Iterator[Dict
     :param maxsize: Максимальное число идентификаторов в одном запросе, по умолчанию равно 100.
     :return: Генератор запросов к базе данных Pubchem - 'Compound'.
     """
-    #TODO
     tags = (
         PropertyTags.MOLECULAR_FORMULA,
         PropertyTags.MOLECULAR_WEIGHT,
@@ -187,8 +186,8 @@ def execute_requests(start: int, stop: int, maxsize: int = 100) -> Iterator[Dict
         try:
             url = url_builder(chunk, **d)
             logger.debug("Делаю запрос по URL: {}", url)
-            res = request_property_data_json(url)
-        except requests.HTTPError:
+            res = request_data_json(url)
+        except requests.exceptions.HTTPError:
             logger.error("Ошибка при выполнении запроса.", exc_info=True)
             break
         except BadDomainError:
@@ -201,7 +200,3 @@ def execute_requests(start: int, stop: int, maxsize: int = 100) -> Iterator[Dict
             logger.debug("Пришел ответ: {}", res)
             for rec in res:
                 yield rec
-
-
-if __name__ == "__main__":
-    execute_requests(1, 100, 100)

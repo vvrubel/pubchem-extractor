@@ -1,7 +1,7 @@
 import pytest
 
-from molecad.data.utils import index_name_extractor
 from molecad.settings import setup
+from molecad.utils import index_name_extractor
 from molecad.validator import (
     is_index_exist,
 )

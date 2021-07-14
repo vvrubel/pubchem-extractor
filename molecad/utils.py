@@ -1,10 +1,10 @@
 import functools
 import json
 import time
+from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Tuple, TypeVar, Union
 
 from loguru import logger
-from pathlib import Path
 
 from molecad.errors import DirExistsError
 
@@ -123,7 +123,6 @@ def read_json(f_path: Path) -> Union[Dict[int, T], List[T]]:
     """
     with open(f_path, "rt") as f:
         data = json.load(f)
-        logger.info(f"Читаю данные из файла {f_path}")
         return data
 
 
@@ -136,7 +135,6 @@ def write_json(f_path: Path, data: Union[Dict[int, T], List[T]]) -> None:
     """
     with open(f_path, "wt") as f:
         json.dump(data, f)
-        logger.info(f"Данные записаны в файл {f_path}")
 
 
 def converter(obj: Union[Dict[int, T], List[T]]) -> List[T]:

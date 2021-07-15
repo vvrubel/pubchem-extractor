@@ -23,7 +23,6 @@ class Settings(BaseSettings):
     api_version: str = "/v0"
 
     class Config:
-        # env_prefix = "/Users/vasilevaaa/PycharmProjects/molecad/"
         env_file = ".env"
         env_file_encoding = "utf-8"
 
@@ -36,6 +35,15 @@ class Settings(BaseSettings):
             password=self.mongo_password,
             authSource=self.mongo_auth_source,
         )[self.db_name]
+
+    @property
+    def get_collections(self):
+        db = self.get_db
+        pubchem = db[self.pubchem]
+        molecules = db[self.molecules]
+        mfp_counts = db[self.mfp_counts]
+        permutations = db[self.permutations]
+        return pubchem, molecules, mfp_counts, permutations
 
 
 settings = Settings()

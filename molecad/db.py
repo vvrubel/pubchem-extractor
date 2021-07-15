@@ -1,8 +1,10 @@
 from typing import Any, Dict, Iterator, List, Tuple
 
 import pymongo
+import rdkit.Chem
 from loguru import logger
 from mongordkit.Database import registration
+from mongordkit.Search import similarity, substructure
 from pymongo.collection import Collection
 from pymongo.database import Database
 from rdkit import Chem
@@ -11,13 +13,15 @@ from molecad.errors import EmptySmilesError
 from molecad.settings import settings
 from molecad.validator import check_smiles
 
+test_smiles = "S(=O)(=O)NC(=O)N"
+
 
 def prepare_db(db: Database, drop: bool) -> List[Collection]:
     """
     Если в базе данных есть коллекции, то она будет очищена, после чего коллекции будут созданы
     заново и на них будет создан индекс \"CID\".
     :param db: Объект базы данных.
-    :param db: Флаг для очистки базы данных.
+    :param drop: Флаг для очистки базы данных.
     :return: Список объектов коллекций.
     """
     lst = db.list_collection_names()
@@ -48,7 +52,9 @@ def register_from_smiles(smiles: str) -> Dict[str, Any]:
     return scheme.generate_mol_doc(rdmol)
 
 
-def populate_w_schema(data: List[Dict[str, Any]], mol_collection: Collection) -> int:
+def populate_w_schema(
+    data: List[Dict[str, Any]], mol_collection: Collection
+) -> Tuple[List[Dict[str, Any]], int]:
     n = 0
     for mol in data:
         smiles = mol["CanonicalSMILES"]
@@ -62,7 +68,8 @@ def populate_w_schema(data: List[Dict[str, Any]], mol_collection: Collection) ->
             scheme["CID"] = cid
             mol_collection.insert_one(scheme)
             n += 1
-    return n
+            mol["rdkit_index"] = scheme["index"]
+    return data, n
 
 
 def upload_data(
@@ -99,3 +106,39 @@ def retrieve_smiles(collection: pymongo.collection.Collection) -> Iterator[Dict[
     cursor = collection.find({}, {"CanonicalSMILES": 1, "CID": 1, "_id": 0})
     for doc in cursor:
         yield doc.values()
+
+
+def substructure_search(
+    smiles: str,
+    molecules: pymongo.collection.Collection,
+) -> Tuple[rdkit.Chem.Mol, List[str]]:
+    q_mol = Chem.MolFromSmiles(smiles)
+    index_lst = substructure.SubSearch(q_mol, molecules, chirality=False)
+    return q_mol, index_lst
+
+
+def similarity_search(smiles, db, molecules, mfp_counts, permutations):
+    q_mol = Chem.MolFromSmiles(smiles)
+    res1 = similarity.SimSearch(q_mol, molecules, mfp_counts, 0.4)
+    print(f"similaritySearch: {res1}")
+    res2 = similarity.SimSearchAggregate(q_mol, molecules, mfp_counts, 0.4)
+    print(f"similaritySearchAggregate: {res2}")
+    res3 = similarity.SimSearchLSH(q_mol, db, molecules, permutations, mfp_counts, threshold=0.8)
+    print(f"similaritySearchLSH: {res3}")
+    results = [res1, res2, res3]
+    return results
+
+
+# TODO in next commit
+def search(smiles, skipped, limited):
+    db = settings.get_db
+    q_mol, index_lst = substructure_search(smiles, settings.molecules)
+    cursor = settings.pubchem.find({"rdkit_index": {"$in": index_lst}})
+    return cursor.skip(skipped).limit(limited)
+
+
+# TODO in next commit
+if __name__ == "__main__":
+    collection, mol_collection, mfp_collection, perm_collections = settings.get_collections
+    substructure_search(test_smiles, mol_collection)
+    # main(test_smiles, 0, 5)

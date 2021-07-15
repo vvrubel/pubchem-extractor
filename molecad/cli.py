@@ -6,8 +6,6 @@ import pymongo
 import pymongo.errors
 import rdkit.RDLogger
 from mongordkit import Search
-from mongordkit.Search import substructure
-from rdkit import Chem
 
 from .db import (
     delete_without_smiles,
@@ -16,7 +14,7 @@ from .db import (
     upload_data,
 )
 from .downloader import execute_requests
-from .settings import settings, Settings
+from .settings import Settings, settings
 from .utils import (
     check_dir,
     chunked,
@@ -154,11 +152,11 @@ def populate(obj: Any, f_dir: pathlib.Path, drop: bool) -> None:
     failed = 0
     mol = 0
     click.secho(f"Произвожу импорт из папки {f_dir}", fg="blue")
-    for file in f_dir.iterdir():
+    for file in f_dir.glob('./**/*.json'):
         try:
             click.echo(f"Импортирую файл {file}")
             data: List[Dict[str, Any]] = converter(read_json(file))
-            m = populate_w_schema(data, molecules)
+            data, m = populate_w_schema(data, molecules)
             s, f = upload_data(data, pubchem)
             succeed += s
             failed += f
@@ -174,8 +172,8 @@ def populate(obj: Any, f_dir: pathlib.Path, drop: bool) -> None:
 
     molecules.create_index("index")
     click.secho(f'На коллекции {molecules.name} создан индекс – "index".', fg="green")
+
     args = (db, molecules, mfp_counts, permutations)
-    substructure.AddPatternFingerprints(molecules)
     Search.PrepareForSearch(*args)
 
 

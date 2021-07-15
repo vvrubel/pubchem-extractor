@@ -1,7 +1,6 @@
 from typing import Optional, Sequence
 
-import pymongo.collection
-
+from molecad.errors import EmptySmilesError
 from molecad.types_ import (
     Domain,
     NamespCmpd,
@@ -76,11 +75,12 @@ def check_tags(tags: Optional[Sequence[str]]) -> bool:
         return all(isinstance(tag, PropertyTags) for tag in tags)
 
 
-def is_index_exist(collection: pymongo.collection.Collection, index: str):
+def check_smiles(smiles) -> None:
     """
-    Проверяет есть ли на коллекции указанный индекс.
-    :param collection: Коллекция, на которой будет создан индекс.
-    :param index: Строка, проверяющаяся на вхождение в список индексов.
-    :return: ``True`` - если индекс присутствует, ``False`` - если индекс отсутствует.
+    Проверяет является ли значение пустой строкой, если строка пустая, то рейзит ошибку
+    'EmptySmilesError'.
+    :param smiles: Значение в словаре по ключу 'CanonicalSMILES'
+    :return: None.
     """
-    return f"{index}_1" in collection.index_information().keys()
+    if smiles is None:
+        raise EmptySmilesError

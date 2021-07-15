@@ -2,12 +2,21 @@ import pathlib
 from typing import Any, Dict, List
 
 import click
+import pymongo
 import pymongo.errors
+import rdkit.RDLogger
+from mongordkit import Search
+from mongordkit.Search import substructure
+from rdkit import Chem
 
-from .db import create_index, delete_without_smiles, upload_data
+from .db import (
+    delete_without_smiles,
+    populate_w_schema,
+    prepare_db,
+    upload_data,
+)
 from .downloader import execute_requests
-from .errors import CreateIndexError
-from .settings import Settings
+from .settings import settings, Settings
 from .utils import (
     check_dir,
     chunked,
@@ -18,27 +27,31 @@ from .utils import (
     write_json,
 )
 
+rdkit.RDLogger.DisableLog("rdApp.*")
+
 
 @click.group(
     help="Консольная утилита для извлечения информации о свойствах молекул с серверов Pubchem, "
-         "сохранения полученной информации в файлы формата JSON. Также с помощью утилиты можно "
-         "загружать полученные данные в базу MongoDB и подготавливать их для поиска молекул."
-         "Для выполнения команд, которые устанавливают соединение с базой данных, необходимо "
-         "указать опцию --prod/--dev для выбора рабочей базы.",
-    invoke_without_command=True
+    "сохранения полученной информации в файлы формата JSON. Также с помощью утилиты можно "
+    "загружать полученные данные в базу MongoDB и подготавливать их для поиска молекул."
+    "Для выполнения команд, которые устанавливают соединение с базой данных, необходимо "
+    "указать опцию --prod/--dev для выбора рабочей базы.",
+    invoke_without_command=True,
 )
 @click.option(
-    '--setup',
+    "--database",
     type=click.Choice(["PROD", "DEV"], case_sensitive=False),
     help="Опция, позволяющая выбирать конфигурационный файл, содержащий переменные окружения, "
-         "который также определяет настройки базы данных."
+    "который также определяет настройки базы данных.",
 )
 @click.pass_context
-def molecad(ctx: click.Context, setup: str):
-    if setup == "DEV":
-        ctx.obj = Settings()
+def molecad(ctx: click.Context, database: str):
+    if database == "DEV":
+        ctx.obj = settings
     else:
-        ctx.obj = Settings(_env_file='prod.env', _env_file_encoding='utf-8')
+        ctx.obj = Settings(_env_file="prod.env", _env_file_encoding="utf-8")
+
+    click.echo(f"Команда запущена с контекстом {ctx.obj}.")
     click.secho(f"Выбрана база {ctx.obj.db_name}", fg="blue")
 
 
@@ -115,15 +128,15 @@ def split(obj: Any, file: pathlib.Path) -> None:
 
 @molecad.command(
     help="Из указанной директории загружает файлы в коллекцию MongoDB, при условии что файл "
-         "содержит не более 100000 документов. Перед загрузкой документов на коллекции будут "
-         "созданы уникальные индекс 'CID'."
+    "содержит не более 100000 документов. Перед загрузкой документов на коллекции будут "
+    "созданы уникальные индекс 'CID'."
 )
 @click.option(
     "--f-dir",
     required=True,
     type=pathlib.Path,
     help="Путь до директории, содержащей chunked-файлы, каждый из которых представляет собой "
-         "список длиной до 100000 элементов.",
+    "список длиной до 100000 элементов.",
 )
 @click.option(
     "--drop",
@@ -133,32 +146,37 @@ def split(obj: Any, file: pathlib.Path) -> None:
 @click.pass_obj
 def populate(obj: Any, f_dir: pathlib.Path, drop: bool) -> None:
     db = obj.get_db
-    collection = db[obj.pubchem]
-    if drop:
-        collection.drop()
-        click.secho(f"Коллекция {collection.name} была очищена.", fg='yellow')
-
-    try:
-        create_index(collection, "CID")
-        click.secho(f"На коллекции {collection.name} создан индекс – \"CID\".", fg='green')
-    except CreateIndexError:
-        click.secho(f"На коллекции {collection.name} индекс \"CID\" уже создан.", fg='red')
+    pubchem, molecules = prepare_db(db, drop)
+    mfp_counts = db.create_collection(obj.mfp_counts)
+    permutations = db.create_collection(obj.permutations)
 
     succeed = 0
     failed = 0
-    click.secho(f"Произвожу импорт из папки {f_dir}", fg='blue')
+    mol = 0
+    click.secho(f"Произвожу импорт из папки {f_dir}", fg="blue")
     for file in f_dir.iterdir():
         try:
             click.echo(f"Импортирую файл {file}")
             data: List[Dict[str, Any]] = converter(read_json(file))
-            s, f = upload_data(data, collection)
+            m = populate_w_schema(data, molecules)
+            s, f = upload_data(data, pubchem)
             succeed += s
             failed += f
+            mol += m
         except pymongo.errors.BulkWriteError as e:
             click.echo(e)
 
-    deleted = delete_without_smiles(collection)
-    click.secho(f"Загружено: {succeed},\nПропущено: {failed},\nУдалено: {deleted}", fg='blue')
+    deleted = delete_without_smiles(pubchem)
+    click.secho(
+        f"Загружено: {succeed},\nПропущено: {failed},\nУдалено: {deleted}, Создано схем: {mol}",
+        fg="blue",
+    )
+
+    molecules.create_index("index")
+    click.secho(f'На коллекции {molecules.name} создан индекс – "index".', fg="green")
+    args = (db, molecules, mfp_counts, permutations)
+    substructure.AddPatternFingerprints(molecules)
+    Search.PrepareForSearch(*args)
 
 
 molecad.add_command(fetch)

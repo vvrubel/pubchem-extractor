@@ -56,7 +56,7 @@ def chunked(iterable: Iterable[T], maxsize: int) -> Iterable[List[T]]:
         yield chunk
 
 
-def concat(*args: T, sep="/") -> str:
+def concat(*args: Any, sep="/") -> str:
     """
     Функция принимает на вход последовательность аргументов, приводит каждый из них к строке,
     после чего конкатенирует их с помощью строки, переданной в ``sep``.
@@ -148,15 +148,3 @@ def converter(obj: Union[Dict[int, T], List[T]]) -> List[T]:
         return list(obj.values())
     else:
         return obj
-
-
-def index_name_extractor(index_list: List[Tuple[str, int]]) -> List[str]:
-    """
-    Из каждого кортежа создает строку с названием индекса, которым оно представлено в MongoDB.
-    :param index_list: Список индексов с указанием их типов.
-    :return: Список имен индексов.
-    """
-    indexes = []
-    for names, types in index_list:
-        indexes.append(concat(names, types, sep="_"))
-    return indexes

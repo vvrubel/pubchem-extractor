@@ -1,4 +1,3 @@
-import pymongo.errors
 from loguru import logger
 
 
@@ -18,7 +17,7 @@ class DirExistsError(FileExistsError):
     pass
 
 
-class CreateIndexError(Exception):
+class EmptySmilesError(Exception):
     pass
 
 

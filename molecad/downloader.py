@@ -115,8 +115,11 @@ def request_data_json(url: str, **operation_options: str) -> List[Dict[str, Any]
     значений параметра ``operation`` в функции ``url_builder``.
     :return: Ответ от сервера в формате JSON, содержимое которого является списком из словарей.
     """
-    response = requests.get(url, params=operation_options).json()
-    return response["PropertyTable"]["Properties"]
+    try:
+        response = requests.get(url, params=operation_options).json()
+        return response["PropertyTable"]["Properties"]
+    except KeyError:
+        breakpoint()
 
 
 def delay_iterations(

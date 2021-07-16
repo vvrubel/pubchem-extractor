@@ -78,8 +78,8 @@ def check_tags(tags: Optional[Sequence[str]]) -> bool:
 def check_smiles(smiles) -> None:
     """
     Проверяет является ли значение пустой строкой, если строка пустая, то рейзит ошибку
-    'EmptySmilesError'.
-    :param smiles: Значение в словаре по ключу 'CanonicalSMILES'
+    ``EmptySmilesError``.
+    :param smiles: Значение в словаре по ключу ``CanonicalSMILES``.
     :return: None.
     """
     if smiles is None:

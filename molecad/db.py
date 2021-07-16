@@ -1,7 +1,6 @@
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import pymongo
-import rdkit.Chem
 from loguru import logger
 from mongordkit.Database import registration
 from mongordkit.Search import similarity, substructure
@@ -9,20 +8,16 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 from rdkit import Chem
 
-from molecad.errors import EmptySmilesError
 from molecad.settings import settings
-from molecad.validator import check_smiles
-
-test_smiles = "S(=O)(=O)NC(=O)N"
 
 
-def prepare_db(db: Database, drop: bool) -> List[Collection]:
+def prepare_db(db: Database, drop: bool) -> None:
     """
     Если в базе данных есть коллекции, то она будет очищена, после чего коллекции будут созданы
-    заново и на них будет создан индекс \"CID\".
+    заново и на них будет создан индекс ``CID``.
     :param db: Объект базы данных.
     :param drop: Флаг для очистки базы данных.
-    :return: Список объектов коллекций.
+    :return: None.
     """
     lst = db.list_collection_names()
     if drop and len(lst) > 0:
@@ -30,13 +25,11 @@ def prepare_db(db: Database, drop: bool) -> List[Collection]:
             db.drop_collection(item)
             logger.info(f"Коллекция {item} удалена.", fg="yellow")
 
-    names = [settings.pubchem, settings.molecules]
-    collection_lst = []
+    names = [settings.properties, settings.molecules]
     for name in names:
         collection: pymongo.collection.Collection = db.create_collection(name)
         collection.create_index("CID", unique=True)
-        collection_lst.append(collection)
-    return collection_lst
+        logger.info(f'На коллекции {collection.name} создан индекс "CID".')
 
 
 def register_from_smiles(smiles: str) -> Dict[str, Any]:
@@ -46,29 +39,45 @@ def register_from_smiles(smiles: str) -> Dict[str, Any]:
     :return: Схема документа молекулы.
     """
     rdmol = Chem.MolFromSmiles(smiles)
+    if rdmol is None:
+        raise TypeError
     scheme = registration.MolDocScheme()
     scheme.set_index("CanonicalSmiles")
-    scheme.add_all_hashes()
     return scheme.generate_mol_doc(rdmol)
 
 
 def populate_w_schema(
     data: List[Dict[str, Any]], mol_collection: Collection
 ) -> Tuple[List[Dict[str, Any]], int]:
+    """
+    Функция вызывается внутри команды ``populate`` и получает список из словарей (в будущем
+    документов): в нем смотрит на наличие ключа ``CanonicalSMILES`` и, если он имеется, генерирует
+    схему документа молекулы, добавляя в схему ключ ``CID``, вставляет документ в базу в случае
+    успешного завершения предыдущих этапов. В последнюю очередь создает на коллекции ``properties``
+    индекс ``rdkit_index``.
+    :param data: Данные, загруженные из файла ``.json``.
+    :param mol_collection: Коллекция, в которую будут вставлены документы, являющиеся
+    представлением молекул.
+    :return: Кортеж из прешедших в функцию данных, к которым добавлено поле ``CID``, и количество
+    сгенерированных схем.
+    """
     n = 0
     for mol in data:
+        if "CanonicalSMILES" not in mol:
+            continue
         smiles = mol["CanonicalSMILES"]
         cid = mol["CID"]
         try:
-            check_smiles(smiles)
-        except EmptySmilesError:
-            continue
-        else:
             scheme = register_from_smiles(smiles)
-            scheme["CID"] = cid
-            mol_collection.insert_one(scheme)
-            n += 1
-            mol["rdkit_index"] = scheme["index"]
+        except TypeError:
+            # if scheme is None:
+            continue
+        scheme["CID"] = cid
+
+        mol_collection.insert_one(scheme)
+        n += 1
+
+        mol["rdkit_index"] = scheme["index"]
     return data, n
 
 
@@ -97,48 +106,67 @@ def delete_without_smiles(collection: pymongo.collection.Collection) -> int:
     return count
 
 
-def retrieve_smiles(collection: pymongo.collection.Collection) -> Iterator[Dict[Any, Any]]:
-    """
-    Функция позволяет извлечь поле `CanonicalSMILES` из документов.
-    :param collection: Коллекция, из которой будет извлекаться значение поля `CanonicalSMILES`.
-    :return: Строка, являющаяся представлением молекулы в формате SMILES.
-    """
-    cursor = collection.find({}, {"CanonicalSMILES": 1, "CID": 1, "_id": 0})
-    for doc in cursor:
-        yield doc.values()
-
-
-def substructure_search(
-    smiles: str,
-    molecules: pymongo.collection.Collection,
-) -> Tuple[rdkit.Chem.Mol, List[str]]:
+def sorting_search(smiles: str) -> List[str]:
+    properties, molecules, mfp_counts = settings.get_collections
     q_mol = Chem.MolFromSmiles(smiles)
-    index_lst = substructure.SubSearch(q_mol, molecules, chirality=False)
-    return q_mol, index_lst
+    substr_lst = substructure.SubSearch(q_mol, molecules, chirality=False)
+    substr_set = set(substr_lst)
+    res = []
+    similar_search = similarity.SimSearchAggregate(q_mol, molecules, mfp_counts, 0.4)
+    for score, smi in sorted(similar_search, reverse=True):
+        res.append(smi)
+        if smi in substr_set:
+            substr_set.remove(smi)
+    res.extend(substr_set)
+    return res
 
 
-def similarity_search(smiles, db, molecules, mfp_counts, permutations):
-    q_mol = Chem.MolFromSmiles(smiles)
-    res1 = similarity.SimSearch(q_mol, molecules, mfp_counts, 0.4)
-    print(f"similaritySearch: {res1}")
-    res2 = similarity.SimSearchAggregate(q_mol, molecules, mfp_counts, 0.4)
-    print(f"similaritySearchAggregate: {res2}")
-    res3 = similarity.SimSearchLSH(q_mol, db, molecules, permutations, mfp_counts, threshold=0.8)
-    print(f"similaritySearchLSH: {res3}")
-    results = [res1, res2, res3]
-    return results
+def stages(result: List[str]):
+    match = {
+        "$match": {"rdkit_index": {"$in": result}}
+    }
+    group = {
+        "$group": {
+            "_id": 0,
+            "avg_MolecularWeight": {"$avg": "$MolecularWeight"},
+            "std_MolecularWeight": {"$stdDevPop": "$MolecularWeight"},
+            "avg_XLogP": {"$avg": "$XLogP"},
+            "std_XLogP": {"$stdDevPop": "$XLogP"},
+            "avg_HBondDonorCount": {"$avg": "$HBondDonorCount"},
+            "std_HBondDonorCount": {"$stdDevPop": "$HBondDonorCount"},
+            "avg_HBondAcceptorCount": {"$avg": "$HBondAcceptorCount"},
+            "std_HBondAcceptorCount": {"$stdDevPop": "$HBondAcceptorCount"},
+            "avg_RotatableBondCount": {"$avg": "$RotatableBondCount"},
+            "std_RotatableBondCount": {"$stdDevPop": "$RotatableBondCount"},
+            "avg_AtomStereoCount": {"$avg": "$AtomStereoCount"},
+            "std_AtomStereoCount": {"$stdDevPop": "$AtomStereoCount"},
+            "avg_BondStereoCount": {"$avg": "$BondStereoCount"},
+            "std_BondStereoCount": {"$stdDevPop": "$BondStereoCount"},
+            "avg_Volume3D": {"$avg": "$Volume3D"},
+            "std_Volume3D": {"$stdDevPop": "$Volume3D"},
+        }
+    }
+    return match, group
 
 
-# TODO in next commit
-def search(smiles, skipped, limited):
-    db = settings.get_db
-    q_mol, index_lst = substructure_search(smiles, settings.molecules)
-    cursor = settings.pubchem.find({"rdkit_index": {"$in": index_lst}})
-    return cursor.skip(skipped).limit(limited)
+def simple_search(smiles, skip, limit):
+    properties, _, _ = settings.get_collections
+    res = sorting_search(smiles)
+    return properties.find({"rdkit_index": {"$in": res}}).skip(skip).limit(limit)
 
 
-# TODO in next commit
+def summary_search(smiles):
+    properties, _, _ = settings.get_collections
+    res = sorting_search(smiles)
+    pipeline = stages(res)
+    res_summary = properties.aggregate(pipeline)
+    res = simple_search(smiles, 0, 1)
+    return res, res_summary
+
+
 if __name__ == "__main__":
-    collection, mol_collection, mfp_collection, perm_collections = settings.get_collections
-    substructure_search(test_smiles, mol_collection)
-    # main(test_smiles, 0, 5)
+    smiles_ = "CCN1C=NC2=C(N=CN=C21)N"
+    skip_ = 0
+    limit_ = 10
+    sorting_search(smiles_)
+

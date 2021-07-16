@@ -6,6 +6,7 @@ import pymongo
 import pymongo.errors
 import rdkit.RDLogger
 from mongordkit import Search
+from pymongo.database import Database
 
 from .db import (
     delete_without_smiles,
@@ -33,7 +34,7 @@ rdkit.RDLogger.DisableLog("rdApp.*")
     "сохранения полученной информации в файлы формата JSON. Также с помощью утилиты можно "
     "загружать полученные данные в базу MongoDB и подготавливать их для поиска молекул."
     "Для выполнения команд, которые устанавливают соединение с базой данных, необходимо "
-    "указать опцию --prod/--dev для выбора рабочей базы.",
+    "указать опцию ``--prod/--dev`` для выбора рабочей базы.",
     invoke_without_command=True,
 )
 @click.option(
@@ -143,10 +144,9 @@ def split(obj: Any, file: pathlib.Path) -> None:
 )
 @click.pass_obj
 def populate(obj: Any, f_dir: pathlib.Path, drop: bool) -> None:
-    db = obj.get_db
-    pubchem, molecules = prepare_db(db, drop)
-    mfp_counts = db.create_collection(obj.mfp_counts)
-    permutations = db.create_collection(obj.permutations)
+    db: Database = obj.get_db
+    prepare_db(db, drop)
+    properties, molecules, mfp_counts = obj.get_collections
 
     succeed = 0
     failed = 0
@@ -157,14 +157,14 @@ def populate(obj: Any, f_dir: pathlib.Path, drop: bool) -> None:
             click.echo(f"Импортирую файл {file}")
             data: List[Dict[str, Any]] = converter(read_json(file))
             data, m = populate_w_schema(data, molecules)
-            s, f = upload_data(data, pubchem)
+            s, f = upload_data(data, properties)
             succeed += s
             failed += f
             mol += m
         except pymongo.errors.BulkWriteError as e:
             click.echo(e)
 
-    deleted = delete_without_smiles(pubchem)
+    deleted = delete_without_smiles(properties)
     click.secho(
         f"Загружено: {succeed},\nПропущено: {failed},\nУдалено: {deleted}, Создано схем: {mol}",
         fg="blue",
@@ -173,8 +173,11 @@ def populate(obj: Any, f_dir: pathlib.Path, drop: bool) -> None:
     molecules.create_index("index")
     click.secho(f'На коллекции {molecules.name} создан индекс – "index".', fg="green")
 
-    args = (db, molecules, mfp_counts, permutations)
-    Search.PrepareForSearch(*args)
+    Search.AddPatternFingerprints(molecules)
+    click.echo(f"Команда Search.AddPatternFingerprints на коллекции {molecules.name} выполнена.")
+    Search.AddMorganFingerprints(molecules, mfp_counts)
+    click.echo(f"Команда Search.AddMorganFingerprints на коллекциях {molecules.name}, "
+               f"{mfp_counts.name} выполнена.")
 
 
 molecad.add_command(fetch)

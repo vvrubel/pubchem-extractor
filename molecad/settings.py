@@ -25,7 +25,6 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
 
-    @property
     def get_db(self):
         return MongoClient(
             host=self.mongo_host,
@@ -35,9 +34,8 @@ class Settings(BaseSettings):
             authSource=self.mongo_auth_source,
         )[self.db_name]
 
-    @property
     def get_collections(self):
-        db = self.get_db
+        db = self.get_db()
         properties = db[self.properties]
         molecules = db[self.molecules]
         mfp_counts = db[self.mfp_counts]

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Iterable
 
 import pymongo
 from loguru import logger
@@ -107,12 +107,12 @@ def delete_without_smiles(collection: pymongo.collection.Collection) -> int:
 
 
 def sorting_search(smiles: str) -> List[str]:
-    properties, molecules, mfp_counts = settings.get_collections
+    properties, molecules, mfp_counts = settings.get_collections()
     q_mol = Chem.MolFromSmiles(smiles)
     substr_lst = substructure.SubSearch(q_mol, molecules, chirality=False)
     substr_set = set(substr_lst)
     res = []
-    similar_search = similarity.SimSearchAggregate(q_mol, molecules, mfp_counts, 0.4)
+    similar_search = similarity.SimSearchAggregate(q_mol, molecules, mfp_counts, 0.8)
     for score, smi in sorted(similar_search, reverse=True):
         res.append(smi)
         if smi in substr_set:
@@ -149,14 +149,14 @@ def stages(result: List[str]):
     return match, group
 
 
-def simple_search(smiles, skip, limit):
-    properties, _, _ = settings.get_collections
+def simple_search(smiles: str, skip: int, limit: int) -> Iterable[Dict[str, Any]]:
+    properties, _, _ = settings.get_collections()
     res = sorting_search(smiles)
     return properties.find({"rdkit_index": {"$in": res}}).skip(skip).limit(limit)
 
 
 def summary_search(smiles):
-    properties, _, _ = settings.get_collections
+    properties, _, _ = settings.get_collections()
     res = sorting_search(smiles)
     pipeline = stages(res)
     res_summary = properties.aggregate(pipeline)

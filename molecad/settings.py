@@ -10,9 +10,10 @@ class Settings(BaseSettings):
     mongo_auth_source = Field("admin", env="MONGO_AUTH_SOURCE")
 
     db_name: str = Field("", env="MONGO_DB_NAME")
-    properties = Field("properties", env="MONGO_PROPERTIES_COLLECTION")
+    pubchem = Field("pubchem", env="MONGO_PUBCHEM_COLLECTION")
     molecules = Field("molecules", env="MONGO_MOLECULES_COLLECTION")
     mfp_counts = Field("mfp_counts", env="MONGO_MFP_COUNTS_COLLECTION")
+    permutations = Field("permutations", env="MONGO_PERMUTATIONS_COLLECTION")
 
     project_dir = Field(".", env="PROJ_DIR")
     fetch_dir = Field("./data/fetch", env="FETCH_DIR")
@@ -38,10 +39,11 @@ class Settings(BaseSettings):
     @property
     def get_collections(self):
         db = self.get_db
-        properties = db[self.properties]
+        pubchem = db[self.pubchem]
         molecules = db[self.molecules]
         mfp_counts = db[self.mfp_counts]
-        return properties, molecules, mfp_counts
+        permutations = db[self.permutations]
+        return pubchem, molecules, mfp_counts, permutations
 
 
 settings = Settings()

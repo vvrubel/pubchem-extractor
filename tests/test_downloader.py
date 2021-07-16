@@ -1,29 +1,11 @@
 import pytest
 
-from molecad.data.downloader import (
-    chunked,
-    generate_ids,
-    request_property_data_json,
-)
-from molecad.data.utils import (
-    concat,
-)
-from molecad.types_ import (
-    Domain,
-    NamespCmpd,
-    Operation,
-    OperationComplex,
-    PropertyTags,
-)
-from molecad.validator import (
-    is_complex_operation,
-    is_simple_operation,
-)
+from molecad.downloader import chunked, generate_ids, request_data_json
+from molecad.types_ import Domain, NamespCmpd, Operation, OperationComplex, PropertyTags
+from molecad.utils import concat
+from molecad.validator import check_tags, is_complex_operation, is_simple_operation
 
 EXAMPLE1 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244/property/MolecularFormula,InChIKey/JSON"
-EXAMPLE2 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244/record/PNG"
-EXAMPLE3 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1/property/MolecularFormula,MolecularWeight,IUPACName,CanonicalSMILES/JSON"
-EXAMPLE4 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/1,2/property/MolecularFormula,MolecularWeight,IUPACName,CanonicalSMILES/JSON"
 
 
 @pytest.mark.parametrize(
@@ -46,6 +28,7 @@ def test_chunked(start, stop, expect):
         ([1, 2, 3], "1,2,3"),
         ((1, 2, 3), "1,2,3"),
         ((1, 2, 3,), "1,2,3"),
+        ((1, "two", 3), "1,two,3"),
         ([1], "1"),
         ("1", "1"),
         ([], ""),
@@ -73,6 +56,8 @@ def test_concat_w_slash(inp, expect):
     [
         (Domain.COMPOUND, NamespCmpd.CID, 2244, "compound/cid/2244"),
         (Domain.COMPOUND, NamespCmpd.CID, "1,2,3", "compound/cid/1,2,3"),
+        ("compound", "cid", 2244, "compound/cid/2244"),
+        ("compound", "cid", "1,2,3", "compound/cid/1,2,3"),
     ],
 )
 def test_input_specification(domain, namespace, ids, expect):
@@ -99,10 +84,22 @@ def test_complex_operation():
         assert res == expect
 
 
+@pytest.mark.parametrize(
+    "tags, expect",
+    [
+        (None, False),
+        ((PropertyTags.MOLECULAR_FORMULA, PropertyTags.CANONICAL_SMILES), True),
+    ],
+)
+def test_check_tags(tags, expect):
+    res = check_tags(tags)
+    assert res == expect
+
+
 def test_request_data_json():
     url = EXAMPLE1
     params = {}
-    res = request_property_data_json(url, **params)
+    res = request_data_json(url, **params)
     expectation = [
         {
             "CID": 2244,
@@ -111,5 +108,4 @@ def test_request_data_json():
         }
     ]
     assert res == expectation
-
 

@@ -14,11 +14,6 @@ from typing import (
 import requests
 from loguru import logger
 
-from molecad.data.utils import (
-    chunked,
-    concat,
-    generate_ids,
-)
 from molecad.errors import (
     BadDomainError,
     BadNamespaceError,
@@ -30,6 +25,11 @@ from molecad.types_ import (
     OperationComplex,
     Out,
     PropertyTags,
+)
+from molecad.utils import (
+    chunked,
+    concat,
+    generate_ids,
 )
 from molecad.validator import (
     is_complex_operation,
@@ -56,32 +56,25 @@ def url_builder(
 ) -> str:
     """
     Команда генерирует строку URL-адреса, необходимую для выполнения запроса в службу PubChem.
-    :param ids: число, строка или последовательность из значений одинакового типа,
-    которые интерпретируются как идентификаторы соединений; последовательность идентификаторов может
-    быть получена в результате выполнения функции ``generate_ids`` или ``chunked``.
-    :param domain: принимает значение из класса ``Domain``, по умолчанию установлено значение
-    ``Domain.COMPOUND``.
-    .. note:: В текущей версии сервиса доступен поиск только по базе данных ``Compound``.
-    :param namespace_prefix: передается в функцию ``joined_namespace`` в качестве ``prefix``,
-    который может принимать значения из классов ``NamespCmpd`` и ``PrefixSearch`` в данной
-    версии сервиса. Значение по умолчанию - ``NamespCmpd.CID``.
-    .. note:: В текущей версии сервиса доступен поиск только по пространству имен ``CID``.
-    :param namespace_suffix: передается в функцию ``joined_namespace`` в качестве ``suffix`` и
-    принимает значения из класса ``SuffixSearch``; по умолчанию - None
-    .. note:: В текущей версии сервиса значение параметра - None.
-    :param operation: принимает значения в зависимости от определенного ранее параметра
-    ``domain``. Аргумент может принимать значения из классов ``Operation``, ``OperationComplex``.
-    Если значение не определено, то по умолчанию извлекается вся запись, т.е. значение равно
-    ``Operation.RECORD``.
-    .. note:: В текущей версии сервиса доступна операции, поиск по которым выполняется в базе
-    данных ``Compound``, а формат их выходных данных должен представлять собой JSON.
-    :param tags: определяется только в случае если ``operation`` == ``Operation.PROPERTY``,
-    иначе не указывается; строка содержит перечень из запрашиваемых тегов, доступных для данной
-    операции, которые передаются в функцию ``join_w_comma`` и далее в ``operation_specification``.
-    :param output: принимает значение из класса ``Out`` и напрямую передается в функцию
-    ``build_url``; по умолчанию - ``Out.JSON``.
-    .. note:: В текущей версии сервиса получение ответа от сервера возможно только в формате JSON.
-    :return: URL-адрес, который используется для запроса в базу данных Pubchem.
+    :param ids: Последовательность из значений одинакового типа, которые интерпретируются как
+    идентификаторы соединений; последовательность идентификаторов может быть получена в
+    результате выполнения функции ``chunked``.
+    :param domain: Принимает значение из класса ``Domain``. В текущей версии сервиса доступен
+    поиск только по базе данных ``Compound``, значение по умолчанию = ``Domain.COMPOUND``.
+    :param namespace_prefix: Является первой частью, описывающей пространство имен
+    поиска и может принимать значения из классов ``NamespCmpd`` и ``PrefixSearch``. Значение по
+    умолчанию = ``NamespCmpd.CID``.
+    :param namespace_suffix: Является второй частью, описывающей пространство имен
+    поиска и может принимать значения из класса ``SuffixSearch`` или None; по умолчанию = None.
+    :param operation: Является частью URL-адреса, которая описывает, какие действия необходимо
+    выполнить над запрашиваемыми идентификаторами. Может принимать значения из классов ``Operation``
+    и ``OperationComplex``. По умолчанию = ``OperationComplex.PROPERTY``.
+    :param tags: Строка содержит последовательность из тегов, принадлежащих классу
+    ``PropertyTags``; определяется только в случае если ``operation`` принадлежит к классу
+    ``OperationComplex.PROPERTY``, иначе равно None.
+    :param output: Принимает значение из класса ``Out``; по умолчанию - ``Out.JSON``.
+    :return: Если все параметры принадлежат к указанным классам, то генерируется URL-адрес, который
+    используется для запроса в базу данных Pubchem; иначе кидается соответствующая ошибка.
     """
 
     if not is_compound(domain):
@@ -109,18 +102,18 @@ def url_builder(
     return url
 
 
-def request_property_data_json(url: str, **operation_options: str) -> List[Dict[str, Any]]:
+def request_data_json(url: str, **operation_options: str) -> List[Dict[str, Any]]:
     """
     Функция добавляет параметры к URL, если они переданы в переменную ``operation_options`` и
     отправляет синхронный GET-запрос к серверам PUG REST баз данных Pubchem.
     Если бы вы создавали URL-адрес вручную, пары значений из словаря ``operation_options``
     записывались бы в конец URL-адреса после знака ``?`` в виде ``key=value``, а при наличии
     более одной пары последние объединялись знаком ``&``.
-    :param url: возвращается из функции ``url_builder`` и является обязательным для всех
+    :param url: Возвращается из функции ``url_builder`` и является обязательным для всех
     запросов.
-    :param operation_options: может быть None или словарем из строк в случае определенных
+    :param operation_options: Может быть None или словарем из строк в случае определенных
     значений параметра ``operation`` в функции ``url_builder``.
-    :return: ответ от сервера в формате JSON .
+    :return: Ответ от сервера в формате JSON, содержимое которого является списком из словарей.
     """
     response = requests.get(url, params=operation_options).json()
     return response["PropertyTable"]["Properties"]
@@ -135,10 +128,10 @@ def delay_iterations(
     * Не больше 400 запросов в минуту.
     * Суммарное время обработки запросов, отправленных в течение минуты, не должно превышать 300
     секунд.
-    :param iterable: последовательности идентификаторов, полученных из функции ``chunked``.
+    :param iterable: Последовательности идентификаторов, полученных из функции ``chunked``.
     :param waiting_time: 60 секунд.
     :param maxsize: 400 запросов.
-    :return: генерирует последовательность в соответствии с ограничениями Pubchem.
+    :return: Генерирует последовательность в соответствии с ограничениями Pubchem.
     """
     window = []
     for i in iterable:
@@ -163,7 +156,7 @@ def execute_requests(start: int, stop: int, maxsize: int = 100) -> Iterator[Dict
     :param start: Первое значение из запрашиваемых CID.
     :param stop: Последнее значение из запрашиваемых CID.
     :param maxsize: Максимальное число идентификаторов в одном запросе, по умолчанию равно 100.
-    :return: итератор по записям из базы данных Pubchem - 'Compound'.
+    :return: Генератор запросов к базе данных Pubchem - 'Compound'.
     """
     tags = (
         PropertyTags.MOLECULAR_FORMULA,
@@ -193,8 +186,8 @@ def execute_requests(start: int, stop: int, maxsize: int = 100) -> Iterator[Dict
         try:
             url = url_builder(chunk, **d)
             logger.debug("Делаю запрос по URL: {}", url)
-            res = request_property_data_json(url)
-        except requests.HTTPError:
+            res = request_data_json(url)
+        except requests.exceptions.HTTPError:
             logger.error("Ошибка при выполнении запроса.", exc_info=True)
             break
         except BadDomainError:
@@ -207,7 +200,3 @@ def execute_requests(start: int, stop: int, maxsize: int = 100) -> Iterator[Dict
             logger.debug("Пришел ответ: {}", res)
             for rec in res:
                 yield rec
-
-
-if __name__ == "__main__":
-    execute_requests(1, 100, 100)

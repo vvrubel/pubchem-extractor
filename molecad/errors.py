@@ -17,6 +17,10 @@ class DirExistsError(FileExistsError):
     pass
 
 
+class EmptySmilesError(Exception):
+    pass
+
+
 class BaseAppException(Exception):
     def __init__(self, message: str = "") -> None:
         super().__init__(message)

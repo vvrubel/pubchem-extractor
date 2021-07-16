@@ -56,7 +56,7 @@ def chunked(iterable: Iterable[T], maxsize: int) -> Iterable[List[T]]:
         yield chunk
 
 
-def concat(*args: T, sep="/") -> str:
+def concat(*args: Any, sep="/") -> str:
     """
     Функция принимает на вход последовательность аргументов, приводит каждый из них к строке,
     после чего конкатенирует их с помощью строки, переданной в ``sep``.
@@ -123,7 +123,6 @@ def read_json(f_path: Path) -> Union[Dict[int, T], List[T]]:
     """
     with open(f_path, "rt") as f:
         data = json.load(f)
-        logger.info(f"Читаю данные из файла {f_path}")
         return data
 
 
@@ -136,7 +135,6 @@ def write_json(f_path: Path, data: Union[Dict[int, T], List[T]]) -> None:
     """
     with open(f_path, "wt") as f:
         json.dump(data, f)
-        logger.info(f"Данные записаны в файл {f_path}")
 
 
 def converter(obj: Union[Dict[int, T], List[T]]) -> List[T]:

@@ -1,18 +1,17 @@
-from enum import Enum
-from typing import Callable, Iterable, Optional, Sequence, Tuple, TypeVar, Union
+import enum
+import typing as t
 
 from pydantic import BaseModel
 
-IdT = TypeVar("IdT")
+IdT = t.TypeVar("IdT")
 
-
-class Domain(str, Enum):
+class Domain(str, enum.Enum):
     COMPOUND = "compound"
     SUBSTANCE = "substance"
     ASSAY = "assay"
 
 
-class NamespCmpd(str, Enum):
+class NamespCmpd(str, enum.Enum):
     CID = "cid"
     NAME = "name"
     SMILES = "smiles"
@@ -35,7 +34,7 @@ class NamespCmpd(str, Enum):
     PATENT_ID = "xref/PatentID"
 
 
-class SearchPrefix(str, Enum):
+class SearchPrefix(str, enum.Enum):
     SUBSTRUCTURE = "substructure"
     SUPERSTRUCTURE = "superstructure"
     SIMILARITY = "similarity"
@@ -47,14 +46,14 @@ class SearchPrefix(str, Enum):
     FAST_SUPERSTRUCTURE = "fastsuperstructure"
 
 
-class SearchSuffix(str, Enum):
+class SearchSuffix(str, enum.Enum):
     SMILES = "smiles"
     INCHI = "inchi"
     SDF = "sdf"
     CID = "cid"
 
 
-class Operation(str, Enum):
+class Operation(str, enum.Enum):
     RECORD = "record"
     SYNONYMS = "synonyms"
     SIDS = "sids"
@@ -66,12 +65,12 @@ class Operation(str, Enum):
     CONFORMERS = "conformers"
 
 
-class OperationComplex(str, Enum):
+class OperationComplex(str, enum.Enum):
     PROPERTY = "property"
     XREFS = "xrefs"
 
 
-class PropertyTags(str, Enum):
+class PropertyTags(str, enum.Enum):
     MOLECULAR_FORMULA = "MolecularFormula"
     MOLECULAR_WEIGHT = "MolecularWeight"
     CANONICAL_SMILES = "CanonicalSMILES"
@@ -115,7 +114,7 @@ class PropertyTags(str, Enum):
     FINGERPRINT_2D = "Fingerprint2D"
 
 
-class Xrefs(str, Enum):
+class Xrefs(str, enum.Enum):
     REGISTRY_ID = "RegistryID"
     RN = "RN"
     PUBMED_ID = "PubMedID"
@@ -129,7 +128,7 @@ class Xrefs(str, Enum):
     PATENT_ID = "PatentID"
 
 
-class Out(str, Enum):
+class Out(str, enum.Enum):
     JSON = "JSON"
     XML = "XML"
     SDF = "SDF"
@@ -141,22 +140,22 @@ class Out(str, Enum):
 
 
 class Namespace(BaseModel):
-    prefix: Union[NamespCmpd, SearchPrefix] = NamespCmpd.CID
-    suffix: Optional[SearchSuffix] = None
+    prefix: t.Union[NamespCmpd, SearchPrefix] = NamespCmpd.CID
+    suffix: t.Optional[SearchSuffix] = None
 
 
 class InputSpecification(BaseModel):
     domain: Domain = Domain.COMPOUND
-    namespace: Tuple[Namespace]
-    identifiers: Callable[[Iterable[IdT]], str]
+    namespace: Namespace
+    identifiers: t.Callable[[t.Iterable[IdT]], str]
 
 
 class OperationSpecification(BaseModel):
-    prefix: Union[Operation, OperationComplex]
-    suffix: Sequence[PropertyTags]
+    prefix: t.Union[Operation, OperationComplex]
+    suffix: t.Sequence[PropertyTags]
 
 
-class UrlParts(BaseModel):
-    input_spec = InputSpecification
+class Url(BaseModel):
+    input_spec = t.Tuple[InputSpecification]
     operation_spec = OperationSpecification
     output: Out = Out.JSON

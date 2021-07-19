@@ -148,3 +148,17 @@ def converter(obj: Union[Dict[int, T], List[T]]) -> List[T]:
         return list(obj.values())
     else:
         return obj
+
+
+def url_encoder(smiles: str, skip: int = 0, limit: int = 1, summary: bool = False):
+    """
+    Энкодер URL-адреса для api.
+    """
+    import urllib.parse
+    query = {'smiles': smiles, 'skip': skip, 'limit': limit}
+    params = urllib.parse.urlencode(query)
+    if summary:
+        route = "v1/compound/summary"
+    else:
+        route = "v1/compound"
+    return f'http://127.0.0.1:8000/{route}?{params}'

@@ -1,9 +1,8 @@
 import enum
 import typing as t
 
-from pydantic import BaseModel
-
 IdT = t.TypeVar("IdT")
+
 
 class Domain(str, enum.Enum):
     COMPOUND = "compound"
@@ -137,25 +136,3 @@ class Out(str, enum.Enum):
     TXT = "TXT"
     ASNT = "ASNT"
     ASNB = "ASNB"
-
-
-class Namespace(BaseModel):
-    prefix: t.Union[NamespCmpd, SearchPrefix] = NamespCmpd.CID
-    suffix: t.Optional[SearchSuffix] = None
-
-
-class InputSpecification(BaseModel):
-    domain: Domain = Domain.COMPOUND
-    namespace: Namespace
-    identifiers: t.Callable[[t.Iterable[IdT]], str]
-
-
-class OperationSpecification(BaseModel):
-    prefix: t.Union[Operation, OperationComplex]
-    suffix: t.Sequence[PropertyTags]
-
-
-class Url(BaseModel):
-    input_spec = t.Tuple[InputSpecification]
-    operation_spec = OperationSpecification
-    output: Out = Out.JSON

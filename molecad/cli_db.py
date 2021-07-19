@@ -57,12 +57,13 @@ def create_molecule(
     документов): в нем смотрит на наличие ключа ``CanonicalSMILES`` и, если он имеется, генерирует
     схему документа молекулы, добавляя в схему ключ ``CID``, вставляет документ в коллекцию
     ``molecules`` в случае успешного завершения предыдущих этапов. Из сгенерированного документа,
-    достает значение по ключу ``index`` и добавляет его к ``data``, возвращая полученное из функции.
+    достает значение по ключу ``index`` и добавляет его к ``data``. Также в ``data`` находит
+    значение поля по ключу ``MolecularWeight`` и приводит его к типу ``float``, возвращая
+    измененный словарь ``data`` из функции.
     :param data: Данные, загруженные из файла ``.json``.
     :param mol_collection: Коллекция, в которую будут вставлены документы, являющиеся
     представлением молекул.
-    :return: Кортеж из прешедших в функцию данных, к которым добавлено поле ``index``, и количество
-    сгенерированных схем.
+    :return: Кортеж из измененной ``data`` и количества сгенерированных схем.
     """
     n = 0
     for molprop in data:
@@ -79,8 +80,14 @@ def create_molecule(
 
         mol_collection.insert_one(scheme)
         n += 1
-
+        # в документах коллекции "properties" создаем поле "index" пришедшее из колл. "molecules"
         molprop["index"] = scheme["index"]
+
+        # приводим "MolecularWeight" к float
+        mol_weight = molprop["MolecularWeight"]
+        if mol_weight is not None:
+            molprop["MolecularWeight"] = float(mol_weight)
+
     return data, n
 
 

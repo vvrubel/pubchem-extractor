@@ -8,7 +8,7 @@ import rdkit.RDLogger
 from mongordkit import Search
 from pymongo.database import Database
 
-from .cli_db import (create_indexes, create_molecule, delete_broken, drop_db, upload_data)
+from .cli_db import create_indexes, create_molecule, delete_broken, drop_db, upload_data
 from .downloader import execute_requests
 from .settings import Settings, settings
 from .utils import (

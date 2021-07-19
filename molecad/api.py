@@ -4,14 +4,8 @@ from fastapi import FastAPI
 
 from .api_db import simple_search, summary_search
 from .api_types import Properties, Summary
-from .settings import settings  # must be changed
 
 app = FastAPI()
-
-# settings = Settings(_env_file="prod.env", _env_file_encoding="utf-8")
-db = settings.get_db()
-properties, molecules, mfp_counts = settings.get_collections()
-db_collections = properties, molecules, mfp_counts
 
 
 @app.get("/v1/compound", response_model=List[Properties])

@@ -3,8 +3,14 @@ from typing import Any, Dict, List
 from mongordkit.Search import similarity, substructure
 from rdkit import Chem
 
-from .api import mfp_counts, molecules, properties
 from .api_types import Properties, Summary
+from .settings import settings  # TODO must be changed to Settings
+
+# TODO
+# settings = Settings(_env_file="prod.env", _env_file_encoding="utf-8")
+db = settings.get_db()
+properties, molecules, mfp_counts = settings.get_collections()
+db_collections = properties, molecules, mfp_counts
 
 
 def sorted_results(smiles: str) -> List[str]:
@@ -20,7 +26,7 @@ def sorted_results(smiles: str) -> List[str]:
     return res
 
 
-def simple_stages(result: List[str], skipped, limited) -> List[Dict[str, Any]]:
+def simple_stages(result: List[str], skipped: int, limited: int) -> List[Dict[str, Any]]:
     match = {"$match": {"index": {"$in": result}}}
     skip = {"$skip": skipped}
     limit = {"$limit": limited}
@@ -32,22 +38,23 @@ def summary_stages(result: List[str]) -> List[Dict[str, Any]]:
     group = {
         "$group": {
             "_id": 0,
-            "MolecularWeight.Average": {"$avg": "$MolecularWeight"},
-            "MolecularWeight.StandardDeviation": {"$stdDevPop": "$MolecularWeight"},
-            "XLogP.Average": {"$avg": "$XLogP"},
-            "XLogP.StandardDeviation": {"$stdDevPop": "$XLogP"},
-            "HBondDonorCount.Average": {"$avg": "$HBondDonorCount"},
-            "HBondDonorCount.StandardDeviation": {"$stdDevPop": "$HBondDonorCount"},
-            "HBondAcceptorCount.Average": {"$avg": "$HBondAcceptorCount"},
-            "HBondAcceptorCount.StandardDeviation": {"$stdDevPop": "$HBondAcceptorCount"},
-            "RotatableBondCount.Average": {"$avg": "$RotatableBondCount"},
-            "RotatableBondCount.StandardDeviation": {"$stdDevPop": "$RotatableBondCount"},
-            "AtomStereoCount.Average": {"$avg": "$AtomStereoCount"},
-            "AtomStereoCount.StandardDeviation": {"$stdDevPop": "$AtomStereoCount"},
-            "BondStereoCount.Average": {"$avg": "$BondStereoCount"},
-            "BondStereoCount.StandardDeviation": {"$stdDevPop": "$BondStereoCount"},
-            "Volume3D.Average": {"$avg": "$Volume3D"},
-            "Volume3D.StandardDeviation": {"$stdDevPop": "$Volume3D"},
+            # TODO
+            # "Average_MolecularWeight": {"$avg": "$MolecularWeight"},
+            # "StandardDeviation_MolecularWeight": {"$stdDevPop": "$MolecularWeight"},
+            "Average_XLogP": {"$avg": "$XLogP"},
+            "StandardDeviation_XLogP": {"$stdDevPop": "$XLogP"},
+            "Average_HBondDonorCount": {"$avg": "$HBondDonorCount"},
+            "StandardDeviation_HBondDonorCount": {"$stdDevPop": "$HBondDonorCount"},
+            "Average_HBondAcceptorCount": {"$avg": "$HBondAcceptorCount"},
+            "StandardDeviation_HBondAcceptorCount": {"$stdDevPop": "$HBondAcceptorCount"},
+            "Average_RotatableBondCount": {"$avg": "$RotatableBondCount"},
+            "StandardDeviation_RotatableBondCount": {"$stdDevPop": "$RotatableBondCount"},
+            "Average_AtomStereoCount": {"$avg": "$AtomStereoCount"},
+            "StandardDeviation_AtomStereoCount": {"$stdDevPop": "$AtomStereoCount"},
+            "Average_BondStereoCount": {"$avg": "$BondStereoCount"},
+            "StandardDeviation_BondStereoCount": {"$stdDevPop": "$BondStereoCount"},
+            "Average_Volume3D": {"$avg": "$Volume3D"},
+            "StandardDeviation_Volume3D": {"$stdDevPop": "$Volume3D"},
         }
     }
     return [match, group]
@@ -65,9 +72,3 @@ def summary_search(smiles) -> List[Summary]:
     pipeline = summary_stages(res)
     cursor = properties.aggregate(pipeline)
     return list(cursor)
-
-
-if __name__ == "__main__":
-    smiles_ = "CCN1C=NC2=C(N=CN=C21)N"
-    skip_ = 0
-    limit_ = 10

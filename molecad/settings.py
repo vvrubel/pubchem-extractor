@@ -18,9 +18,6 @@ class Settings(BaseSettings):
     fetch_dir = Field("./data/fetch", env="FETCH_DIR")
     split_dir = Field("./data/split", env="SPLIT_DIR")
 
-    component_name = "molecad"
-    api_version: str = "/v1"
-
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

@@ -1,16 +1,13 @@
-import enum
-import typing as t
-
-IdT = t.TypeVar("IdT")
+from enum import Enum
 
 
-class Domain(str, enum.Enum):
+class Domain(str, Enum):
     COMPOUND = "compound"
     SUBSTANCE = "substance"
     ASSAY = "assay"
 
 
-class NamespCmpd(str, enum.Enum):
+class NamespCmpd(str, Enum):
     CID = "cid"
     NAME = "name"
     SMILES = "smiles"
@@ -33,7 +30,7 @@ class NamespCmpd(str, enum.Enum):
     PATENT_ID = "xref/PatentID"
 
 
-class SearchPrefix(str, enum.Enum):
+class SearchPrefix(str, Enum):
     SUBSTRUCTURE = "substructure"
     SUPERSTRUCTURE = "superstructure"
     SIMILARITY = "similarity"
@@ -45,14 +42,14 @@ class SearchPrefix(str, enum.Enum):
     FAST_SUPERSTRUCTURE = "fastsuperstructure"
 
 
-class SearchSuffix(str, enum.Enum):
+class SearchSuffix(str, Enum):
     SMILES = "smiles"
     INCHI = "inchi"
     SDF = "sdf"
     CID = "cid"
 
 
-class Operation(str, enum.Enum):
+class Operation(str, Enum):
     RECORD = "record"
     SYNONYMS = "synonyms"
     SIDS = "sids"
@@ -64,12 +61,12 @@ class Operation(str, enum.Enum):
     CONFORMERS = "conformers"
 
 
-class OperationComplex(str, enum.Enum):
+class OperationComplex(str, Enum):
     PROPERTY = "property"
     XREFS = "xrefs"
 
 
-class PropertyTags(str, enum.Enum):
+class PropertyTags(str, Enum):
     MOLECULAR_FORMULA = "MolecularFormula"
     MOLECULAR_WEIGHT = "MolecularWeight"
     CANONICAL_SMILES = "CanonicalSMILES"
@@ -113,7 +110,7 @@ class PropertyTags(str, enum.Enum):
     FINGERPRINT_2D = "Fingerprint2D"
 
 
-class Xrefs(str, enum.Enum):
+class Xrefs(str, Enum):
     REGISTRY_ID = "RegistryID"
     RN = "RN"
     PUBMED_ID = "PubMedID"
@@ -127,7 +124,7 @@ class Xrefs(str, enum.Enum):
     PATENT_ID = "PatentID"
 
 
-class Out(str, enum.Enum):
+class Out(str, Enum):
     JSON = "JSON"
     XML = "XML"
     SDF = "SDF"

@@ -79,5 +79,5 @@ def compound_search(smiles_: str, skip_: int, limit_: int) -> List[Cursor]:
 @timer
 def compound_search_summary(smiles: str) -> List[Cursor]:
     pipeline = summary_pipeline(smiles)
-    cursor: Cursor = properties.aggregate(pipeline)
+    cursor = properties.aggregate(pipeline)
     return list(cursor)

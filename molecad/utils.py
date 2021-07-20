@@ -1,6 +1,7 @@
 import functools
 import json
 import time
+import urllib.parse
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Tuple, TypeVar, Union
 
@@ -12,18 +13,19 @@ T = TypeVar("T")
 
 
 def timer(func):
-    """Длительность работы функции"""
-
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         start = time.monotonic()
         val = func(*args, **kwargs)
         end = time.monotonic()
         work_time = end - start
-        hour = work_time // 3600
-        mins = (work_time % 3600) // 60
-        sec = (work_time % 3600) % 60
-        print(f"Время выполнения {func.__name__!r}: {hour} ч., {mins} мин., {sec:.2f} сек.")
+        hours = work_time // 3600
+        minutes = (work_time % 3600) // 60
+        seconds = (work_time % 3600) % 60
+        print(
+            f"Время выполнения {func.__name__!r}:\n "
+            f"{hours} часов, {minutes} минут, {seconds:.2f} секунд."
+        )
         return val
 
     return wrapper
@@ -154,12 +156,12 @@ def converter(obj: Union[Dict[int, T], List[T]]) -> List[T]:
 
 def url_encoder(route: str, query: Dict[str, Union[str, int]]) -> str:
     """
-    Энкодер URL-адреса для api.
+    Энкодер URL-адреса для api. Нужен для того, чтобы не использовать сторонние сервисы для
+    генерирования URL.
     :param route: Путь до ручки api, например: '/v1/compound'.
     :param query: Параметры, передаваемые в URL-адрес в формате словаря.
     Например: ``query = {'smiles': 'NC(=O)N', 'skip': 0, 'limit': 10}``.
     :return: Строка URL-адреса.
     """
-    import urllib.parse
     params = urllib.parse.urlencode(query)
-    return f'http://127.0.0.1:8000{route}?{params}'
+    return f"http://127.0.0.1:8000{route}?{params}"

@@ -1,15 +1,11 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from mongordkit.Search import substructure
 from pymongo.cursor import Cursor
 from rdkit import Chem
 
-from .errors import (
-    BadRequestError,
-    NoDatabaseRecordError,
-)
 from .settings import Settings
-
+from .utils import timer
 
 settings = Settings(_env_file="prod.env", _env_file_encoding="utf-8")
 db = settings.get_db()
@@ -24,6 +20,8 @@ def paging_pipeline(skip: int, limit: int) -> List[Dict[str, int]]:
 
 
 def summary_pipeline(smiles: str) -> List[Dict[str, Any]]:
+    result = run_search(smiles)
+    match_ = {"$match": {"index": {"$in": result}}}
     group_ = {
         "$group": {
             "_id": 0,
@@ -62,29 +60,24 @@ def summary_pipeline(smiles: str) -> List[Dict[str, Any]]:
             "Volume3D": {"Average": "$AvgVol3D", "StandardDeviation": "$StdVol3D"},
         }
     }
-    return [group_, project_]
+    return [match_, group_, project_]
 
 
-def search_route(*args) -> List[Dict[str, Any]]:
-    route, smiles, skip, limit = args
-    if route == "/v1/compound":
-        return paging_pipeline(skip, limit)
-    elif route == "/v1/compound/summary":
-        return summary_pipeline(smiles)
-    else:
-        raise BadRequestError
-
-
-def run_search(
-    route: str, smiles: str, skip: Optional[int] = None, limit: Optional[int] = None
-) -> List[Cursor]:
+def run_search(smiles: str) -> List[str]:
     q_mol: Chem.Mol = Chem.MolFromSmiles(smiles)
     search_results: List[str] = substructure.SubSearch(q_mol, molecules)
-    match_stage = [{"$match": {"index": {"$in": search_results}}}]
-    routed_stages = search_route(route, smiles, skip, limit)
-    pipeline = match_stage + routed_stages
+    return search_results
+
+
+@timer
+def compound_search(smiles_: str, skip_: int, limit_: int) -> List[Cursor]:
+    result = run_search(smiles_)
+    cursor = properties.find({"index": {"$in": result}}).skip(skip_).limit(limit_)
+    return list(cursor)
+
+
+@timer
+def compound_search_summary(smiles: str) -> List[Cursor]:
+    pipeline = summary_pipeline(smiles)
     cursor: Cursor = properties.aggregate(pipeline)
-    if not cursor:
-        raise NoDatabaseRecordError
-    else:
-        return list(cursor)
+    return list(cursor)

@@ -12,13 +12,7 @@ from .cli_db import create_indexes, create_molecule, delete_broken, drop_db, upl
 from .downloader import execute_requests
 from .settings import Settings, settings
 from .utils import (
-    check_dir,
-    chunked,
-    converter,
-    file_path,
-    parse_first_and_last,
-    read_json,
-    write_json,
+    check_dir, chunked, converter, file_path, parse_first_and_last, read_json, write_json,
 )
 
 rdkit.RDLogger.DisableLog("rdApp.*")
@@ -90,7 +84,7 @@ def fetch(obj: Settings, start: int, stop: int, size: int, f_size: int) -> None:
 
 
 @molecad.command(
-    help="При использовании команды `db.collection.insert_many({..})` имеется ограничение на "
+    help="При использовании команды `db.collection.insert_many({...})` имеется ограничение на "
     "максимально допустимое количество добавляемых документов за один раз равное 100000. "
     "Данная функция служит для того, чтобы разрезать JSON-файлы, превышающие указанное выше "
     "ограничение, на файлы меньшего размера."

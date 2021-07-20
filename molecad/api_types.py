@@ -1,9 +1,9 @@
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel
 
 
-class Properties(BaseModel):
+class Compound(BaseModel):
     CID: int
     MolecularFormula: str
     MolecularWeight: float
@@ -20,17 +20,17 @@ class Properties(BaseModel):
 
 
 class Statistics(BaseModel):
-    Average: float
-    StandardDeviation: float
+    Average: Optional[float] = None
+    StandardDeviation: Optional[float] = None
 
 
-class Summary(BaseModel):
-    MolecularWeight: List[Statistics]
-    XLogP: List[Statistics] = []
-    HBondDonorCount: List[Statistics]
-    HBondAcceptorCount: List[Statistics]
-    RotatableBondCount: List[Statistics]
-    AtomStereoCount: List[Statistics]
-    BondStereoCount: List[Statistics]
-    Volume3D: List[Statistics] = []
-
+class OutCompoundSummary(BaseModel):
+    InputSmiles: str
+    MolecularWeight: Statistics
+    XLogP: Statistics
+    HBondDonorCount: Statistics
+    HBondAcceptorCount: Statistics
+    RotatableBondCount: Statistics
+    AtomStereoCount: Statistics
+    BondStereoCount: Statistics
+    Volume3D: Statistics

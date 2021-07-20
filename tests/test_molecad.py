@@ -122,13 +122,13 @@ def test_request_data_json():
     [
         (
             "/v1/compound",
-            {"smiles": "NC(=O)N", "skip": 0, "limit": 1},
-            "http://127.0.0.1:8000/v1/compound?smiles=NC%28%3DO%29N&skip=0&limit=1",
+            {"smiles": "S(=O)(=O)NC(=O)N", "skip": 0, "limit": 1},
+            "http://127.0.0.1:8000/v1/compound?smiles=S%28%3DO%29%28%3DO%29NC%28%3DO%29N&skip=0&limit=1",
         ),
         (
             "/v1/compound/summary",
-            {"smiles": "NC(=O)N"},
-            "http://127.0.0.1:8000/v1/compound/summary?smiles=NC%28%3DO%29N",
+            {"smiles": "S(=O)(=O)NC(=O)N"},
+            "http://127.0.0.1:8000/v1/compound/summary?smiles=S%28%3DO%29%28%3DO%29NC%28%3DO%29N",
         ),
     ],
 )

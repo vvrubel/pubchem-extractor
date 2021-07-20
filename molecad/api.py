@@ -2,7 +2,7 @@ from typing import List
 
 from fastapi import FastAPI
 
-from .api_db import simple_search, summary_search
+from .api_db import
 from .api_types import Properties, Summary
 
 app = FastAPI()

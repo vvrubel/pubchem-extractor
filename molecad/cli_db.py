@@ -80,7 +80,7 @@ def create_molecule(
 
         mol_collection.insert_one(scheme)
         n += 1
-        # в документах коллекции "properties" создаем поле "index" пришедшее из колл. "molecules"
+        # из схемы берем поле "index" и добавляем его к данным
         molprop["index"] = scheme["index"]
 
         # приводим "MolecularWeight" к float

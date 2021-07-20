@@ -150,15 +150,14 @@ def converter(obj: Union[Dict[int, T], List[T]]) -> List[T]:
         return obj
 
 
-def url_encoder(smiles: str, skip: int = 0, limit: int = 1, summary: bool = False):
+def url_encoder(route: str, query: Dict[str, Union[str, int]]) -> str:
     """
     Энкодер URL-адреса для api.
+    :param route: Путь до ручки api, например: '/v1/compound'.
+    :param query: Параметры, передаваемые в URL-адрес в формате словаря.
+    Например: ``query = {'smiles': 'NC(=O)N', 'skip': 0, 'limit': 10}``.
+    :return: Строка URL-адреса.
     """
     import urllib.parse
-    query = {'smiles': smiles, 'skip': skip, 'limit': limit}
     params = urllib.parse.urlencode(query)
-    if summary:
-        route = "v1/compound/summary"
-    else:
-        route = "v1/compound"
-    return f'http://127.0.0.1:8000/{route}?{params}'
+    return f'http://127.0.0.1:8000{route}?{params}'

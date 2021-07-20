@@ -23,7 +23,8 @@ def drop_db(db: Database) -> None:
 
 def create_indexes(*args: Collection) -> None:
     """
-    Создает на переданных в функцию коллекциях уникальный индекс ``CID`` и индекс ``index``.
+    Создает на переданных в функцию коллекциях уникальный индекс ``CID`` и индекс ``index``,
+    а также индекс ``score`` на коллекции ``properties``.
     :param args: Список из коллекций ``properties`` и ``molecules``.
     :return: None.
     """
@@ -32,6 +33,8 @@ def create_indexes(*args: Collection) -> None:
         click.secho(f'На коллекции {arg.name} создан уникальный индекс "CID".', fg="green")
         arg.create_index("index")
         click.secho(f'На коллекции {arg.name} создан индекс – "index".', fg="green")
+    args[0].create_index(["score", -1])
+    click.secho(f'На коллекции {args[0].name} создан индекс – "score".', fg="green")
 
 
 def register_from_smiles(smiles: str) -> Dict[str, Any]:

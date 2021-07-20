@@ -13,6 +13,7 @@ T = TypeVar("T")
 
 def timer(func):
     """Длительность работы функции"""
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         start = time.monotonic()
@@ -24,6 +25,7 @@ def timer(func):
         sec = (work_time % 3600) % 60
         print(f"Время выполнения {func.__name__!r}: {hour} ч., {mins} мин., {sec:.2f} сек.")
         return val
+
     return wrapper
 
 

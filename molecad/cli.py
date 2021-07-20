@@ -177,7 +177,9 @@ def populate(obj: Settings, f_dir: pathlib.Path, drop: bool) -> None:
         f"Удалено документов без схемы: {deleted[1]}",
         fg="green",
     )
+
     click.secho("Начинаю выполнять подготовку базы для подструктурного поиска", fg="yellow")
+
     Search.AddPatternFingerprints(molecules)
     click.secho("Команда AddPatternFingerprints выполнена.", fg="bright_blue")
     Search.AddMorganFingerprints(molecules, mfp_counts)

@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     split_dir = Field("./data/split", env="SPLIT_DIR")
 
     component_name = "molecad"
-    api_version: str = "/v0"
+    api_version: str = "/v1"
 
     class Config:
         env_file = ".env"

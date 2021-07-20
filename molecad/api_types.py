@@ -33,3 +33,4 @@ class Summary(BaseModel):
     AtomStereoCount: List[Statistics]
     BondStereoCount: List[Statistics]
     Volume3D: List[Statistics] = []
+

@@ -120,11 +120,17 @@ def test_request_data_json():
 @pytest.mark.parametrize(
     "route, query, exp",
     [
-        ("/v1/compound", {"smiles": "NC(=O)N", "skip": 0, "limit": 1},
-         "http://127.0.0.1:8000/v1/compound?smiles=NC%28%3DO%29N&skip=0&limit=1"),
-        ("/v1/compound/summary", {"smiles": "NC(=O)N"},
-         "http://127.0.0.1:8000/v1/compound/summary?smiles=NC%28%3DO%29N")
-    ]
+        (
+            "/v1/compound",
+            {"smiles": "NC(=O)N", "skip": 0, "limit": 1},
+            "http://127.0.0.1:8000/v1/compound?smiles=NC%28%3DO%29N&skip=0&limit=1",
+        ),
+        (
+            "/v1/compound/summary",
+            {"smiles": "NC(=O)N"},
+            "http://127.0.0.1:8000/v1/compound/summary?smiles=NC%28%3DO%29N",
+        ),
+    ],
 )
 def test_url_encoder(route, query, exp):
     res = url_encoder(route, query)

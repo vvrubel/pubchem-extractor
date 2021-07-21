@@ -7,7 +7,7 @@ from rdkit import Chem
 from .settings import Settings
 from .utils import timer
 
-settings = Settings(_env_file="prod.env", _env_file_encoding="utf-8")
+settings = Settings(_env_file=".env.prod", _env_file_encoding="utf-8")
 db = settings.get_db()
 properties, molecules, mfp_counts = settings.get_collections()
 db_collections = properties, molecules, mfp_counts

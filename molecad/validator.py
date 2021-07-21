@@ -1,15 +1,9 @@
 from typing import Optional, Sequence
 
-from molecad.downloader_types import (
-    Domain,
-    NamespCmpd,
-    Operation,
-    OperationComplex,
-    PropertyTags,
-    SearchPrefix,
-    SearchSuffix,
+from .downloader_types import (
+    Domain, NamespCmpd, Operation, OperationComplex, PropertyTags, SearchPrefix, SearchSuffix,
 )
-from molecad.errors import EmptySmilesError
+from .errors import EmptySmilesError
 
 
 def is_compound(domain: str) -> bool:

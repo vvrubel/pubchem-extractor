@@ -11,7 +11,7 @@ from .cli_db import create_molecule, delete_broken, drop_db, upload_data
 from .downloader import execute_requests
 from .settings import Settings, settings
 from .utils import (
-    check_dir, chunked, converter, file_path, parse_first_and_last, read_json, write_json,
+    check_dir, chunked, converter, file_path, parse_first_and_last, read_json, timer, write_json,
 )
 
 rdkit.RDLogger.DisableLog("rdApp.*")
@@ -20,20 +20,20 @@ rdkit.RDLogger.DisableLog("rdApp.*")
 @click.group(
     help='Консольная утилита для извлечения информации о свойствах молекул с серверов Pubchem, '
     'сохранения полученной информации в файлы формата JSON. Также с помощью утилиты можно '
-    'загружать полученные данные в базу MongoDB и подготавливать их для поиска молекул. '
-    'Для выполнения команд, которые устанавливают соединение с базой данных, необходимо '
-    'указать опцию `--setup` для выбора рабочей базы.',
-    invoke_without_command=True,
+    'загружать полученные данные в базу MongoDB и подготавливать их для поиска молекул. ',
+    invoke_without_command=True
 )
 @click.option(
-    "--setup",
-    type=click.Choice(["PROD", "DEV"], case_sensitive=False),
-    help='Опция, позволяющая выбирать конфигурационный файл, содержащий переменные окружения, '
-    'который также определяет настройки базы данных.',
+    "--database", type=click.Choice(["PROD", "DEV", "NAIVE"], case_sensitive=False),
+    help='Опция позволяет выбирать конфигурационный файл, содержащий переменные окружения и '
+         'настройки базы данных. Если опция принимает значение "naive", то fingerprints не '
+         'рассчитываются – для быстрого/тестового поиска.'
 )
 @click.pass_context
-def molecad(ctx: click.Context, setup: str):
-    if setup == "PROD":
+def molecad(ctx: click.Context, database: str):
+    if database == "NAIVE":
+        ctx.obj = Settings(_env_file=".env.naive", _env_file_encoding="utf-8")
+    elif database == "PROD":
         ctx.obj = Settings(_env_file=".env.prod", _env_file_encoding="utf-8")
     else:
         ctx.obj = settings
@@ -119,7 +119,8 @@ def split(obj: Settings, file: pathlib.Path, f_size: int) -> None:
     help='Из указанной директории загружает файлы в коллекцию MongoDB. Количество документов в '
          'файле не должно превышать 100000, иначе данный файл будет пропущен при загрузке. При '
          'указании опции "--drop" удаляет все коллекции в базе, после чего создает их заново и '
-         'устанавливает уникальные индексы "CID", "index" на коллекциях "properties" и "molecules".'
+         'устанавливает уникальный индекс "CID" и индекс "index" на коллекциях "properties" и '
+         '"molecules". Если имя базы данных равно "naive", то fingerprints не будут сгенерированы.'
 )
 @click.option(
     "--f-dir",
@@ -134,6 +135,7 @@ def split(obj: Settings, file: pathlib.Path, f_size: int) -> None:
     help='Если опция "--drop" указана, то база будет очищена.',
 )
 @click.pass_obj
+@timer
 def populate(obj: Settings, f_dir: pathlib.Path, drop: bool) -> None:
     if drop:
         drop_db(obj)
@@ -171,11 +173,15 @@ def populate(obj: Settings, f_dir: pathlib.Path, drop: bool) -> None:
         fg="green",
     )
 
-    click.secho("Начинаю генерировать Fingerprints", fg="yellow")
-    Search.AddPatternFingerprints(molecules)
-    click.secho("Команда AddPatternFingerprints выполнена.", fg="bright_blue")
-    Search.AddMorganFingerprints(molecules, mfp_counts)
-    click.secho("Команда AddMorganFingerprints выполнена.", fg="bright_blue")
+    if obj.get_db().name != "naive":
+        click.secho("Начинаю генерировать Fingerprints", fg="yellow")
+        Search.AddPatternFingerprints(molecules)
+        click.secho("Команда AddPatternFingerprints выполнена.", fg="bright_blue")
+        Search.AddMorganFingerprints(molecules, mfp_counts)
+        click.secho("Команда AddMorganFingerprints выполнена.", fg="bright_blue")
+    else:
+        click.secho("База готова для NaiveSearch: fingerprints не были сгенерированы",
+                    fg="magenta")
 
 
 molecad.add_command(fetch)

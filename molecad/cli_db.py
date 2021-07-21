@@ -35,7 +35,7 @@ def create_indexes(*args: Collection) -> None:
     for arg in args:
         arg.create_index("CID", unique=True)
         click.secho(f'На коллекции {arg.name} создан уникальный индекс "CID".', fg="green")
-        arg.create_index("index", unique=True)
+        arg.create_index("index")
         click.secho(f'На коллекции {arg.name} создан индекс – "index".', fg="green")
 
 
@@ -80,6 +80,7 @@ def create_molecule(
         except TypeError:
             # if scheme is None
             continue
+
         scheme["CID"] = cid
 
         mol_collection.insert_one(scheme)

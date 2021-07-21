@@ -1,37 +1,15 @@
 import time
 from typing import (
-    Any,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Sequence,
-    TypeVar,
-    Union,
+    Any, Dict, Iterable, Iterator, List, Optional, Sequence, TypeVar, Union,
 )
 
 import requests
 from loguru import logger
 
-from molecad.errors import (
-    BadDomainError,
-    BadNamespaceError,
-    BadOperationError,
-)
-from molecad.types_ import (
-    Domain,
-    NamespCmpd,
-    OperationComplex,
-    Out,
-    PropertyTags,
-)
-from molecad.utils import (
-    chunked,
-    concat,
-    generate_ids,
-)
-from molecad.validator import (
+from .downloader_types import Domain, NamespCmpd, OperationComplex, Out, PropertyTags
+from .errors import BadDomainError, BadNamespaceError, BadOperationError
+from .utils import chunked, concat, generate_ids
+from .validator import (
     is_complex_operation,
     is_compound,
     is_namespace_search,
@@ -119,7 +97,7 @@ def request_data_json(url: str, **operation_options: str) -> List[Dict[str, Any]
         response = requests.get(url, params=operation_options).json()
         return response["PropertyTable"]["Properties"]
     except KeyError:
-        breakpoint()
+        raise
 
 
 def delay_iterations(
@@ -173,7 +151,7 @@ def execute_requests(start: int, stop: int, maxsize: int = 100) -> Iterator[Dict
         PropertyTags.ROTATABLE_BOND_COUNT,
         PropertyTags.ATOM_STEREO_COUNT,
         PropertyTags.BOND_STEREO_COUNT,
-        PropertyTags.VOLUME_3D
+        PropertyTags.VOLUME_3D,
     )
     d = {
         "domain": Domain.COMPOUND,
@@ -192,6 +170,9 @@ def execute_requests(start: int, stop: int, maxsize: int = 100) -> Iterator[Dict
             res = request_data_json(url)
         except requests.exceptions.HTTPError:
             logger.error("Ошибка при выполнении запроса.", exc_info=True)
+            break
+        except KeyError:
+            logger.error("Неверный формат ответа от сервера.")
             break
         except BadDomainError:
             logger.error("В данной версии сервиса поиск возможен только по базе данных 'Compound'")

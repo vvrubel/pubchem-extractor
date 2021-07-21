@@ -1,7 +1,4 @@
 from enum import Enum
-from typing import TypeVar
-
-IdT = TypeVar("IdT")
 
 
 class Domain(str, Enum):

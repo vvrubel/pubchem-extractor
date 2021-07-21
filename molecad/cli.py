@@ -12,13 +12,7 @@ from .cli_db import create_indexes, create_molecule, delete_broken, drop_db, upl
 from .downloader import execute_requests
 from .settings import Settings, settings
 from .utils import (
-    check_dir,
-    chunked,
-    converter,
-    file_path,
-    parse_first_and_last,
-    read_json,
-    write_json,
+    check_dir, chunked, converter, file_path, parse_first_and_last, read_json, write_json,
 )
 
 rdkit.RDLogger.DisableLog("rdApp.*")
@@ -44,7 +38,6 @@ def molecad(ctx: click.Context, setup: str):
         ctx.obj = settings
     else:
         ctx.obj = Settings(_env_file="prod.env", _env_file_encoding="utf-8")
-
     click.secho(f"Команда запущена с контекстом {ctx.obj}.", fg="cyan")
     click.secho(f"Выбрана база {ctx.obj.db_name}", fg="green")
 
@@ -91,7 +84,7 @@ def fetch(obj: Settings, start: int, stop: int, size: int, f_size: int) -> None:
 
 
 @molecad.command(
-    help="При использовании команды `db.collection.insert_many({..})` имеется ограничение на "
+    help="При использовании команды `db.collection.insert_many({...})` имеется ограничение на "
     "максимально допустимое количество добавляемых документов за один раз равное 100000. "
     "Данная функция служит для того, чтобы разрезать JSON-файлы, превышающие указанное выше "
     "ограничение, на файлы меньшего размера."
@@ -179,6 +172,8 @@ def populate(obj: Settings, f_dir: pathlib.Path, drop: bool) -> None:
         fg="green",
     )
 
+    click.secho("Начинаю выполнять подготовку базы для подструктурного поиска", fg="yellow")
+
     Search.AddPatternFingerprints(molecules)
     click.secho("Команда AddPatternFingerprints выполнена.", fg="bright_blue")
     Search.AddMorganFingerprints(molecules, mfp_counts)
@@ -186,8 +181,8 @@ def populate(obj: Settings, f_dir: pathlib.Path, drop: bool) -> None:
 
 
 molecad.add_command(fetch)
-molecad.add_command(populate)
 molecad.add_command(split)
+molecad.add_command(populate)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel, NonNegativeInt, PositiveInt
 
 from .api_db import compound_search, compound_search_summary
+from .settings import settings
 
 
 class Compound(BaseModel):
@@ -41,13 +42,13 @@ class CompoundSummary(BaseModel):
 app = FastAPI()
 
 
-@app.get("/v1/compound", response_model=List[Compound])
+@app.get(f"/{settings.api_version}/compound", response_model=List[Compound])
 def get_compounds(smiles: str, skip: NonNegativeInt, limit: PositiveInt):
     res = compound_search(smiles, skip, limit)
     return list(res)
 
 
-@app.get("/v1/compound/summary", response_model=List[CompoundSummary])
+@app.get(f"/{settings.api_version}/compound/summary", response_model=List[CompoundSummary])
 def get_compound_summary(smiles: str):
     res = compound_search_summary(smiles)
     return list(res)

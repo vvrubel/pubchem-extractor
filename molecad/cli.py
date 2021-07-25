@@ -24,16 +24,13 @@ rdkit.RDLogger.DisableLog("rdApp.*")
     invoke_without_command=True
 )
 @click.option(
-    "--database", type=click.Choice(["PROD", "DEV", "NAIVE"], case_sensitive=False),
+    "--database", type=click.Choice(["PROD", "DEV"], case_sensitive=False),
     help='Опция позволяет выбирать конфигурационный файл, содержащий переменные окружения и '
-         'настройки базы данных. Если опция принимает значение "naive", то fingerprints не '
-         'рассчитываются – для быстрого/тестового поиска.'
+         'настройки базы данных.'
 )
 @click.pass_context
 def molecad(ctx: click.Context, database: str):
-    if database == "NAIVE":
-        ctx.obj = Settings(_env_file=".env.naive", _env_file_encoding="utf-8")
-    elif database == "PROD":
+    if database == "PROD":
         ctx.obj = Settings(_env_file=".env.prod", _env_file_encoding="utf-8")
     else:
         ctx.obj = settings
@@ -173,15 +170,11 @@ def populate(obj: Settings, f_dir: pathlib.Path, drop: bool) -> None:
         fg="green",
     )
 
-    if obj.get_db().name != "naive":
-        click.secho("Начинаю генерировать Fingerprints", fg="yellow")
-        Search.AddPatternFingerprints(molecules)
-        click.secho("Команда AddPatternFingerprints выполнена.", fg="bright_blue")
-        Search.AddMorganFingerprints(molecules, mfp_counts)
-        click.secho("Команда AddMorganFingerprints выполнена.", fg="bright_blue")
-    else:
-        click.secho("База готова для NaiveSearch: fingerprints не были сгенерированы",
-                    fg="magenta")
+    click.secho("Начинаю генерировать Fingerprints", fg="yellow")
+    Search.AddPatternFingerprints(molecules)
+    click.secho("Команда AddPatternFingerprints выполнена.", fg="bright_blue")
+    Search.AddMorganFingerprints(molecules, mfp_counts)
+    click.secho("Команда AddMorganFingerprints выполнена.", fg="bright_blue")
 
 
 molecad.add_command(fetch)

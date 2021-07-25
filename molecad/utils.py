@@ -3,7 +3,7 @@ import json
 import time
 import urllib.parse
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Tuple, TypeVar, Union
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Tuple, TypeVar, Union
 
 from loguru import logger
 
@@ -12,7 +12,7 @@ from molecad.errors import DirExistsError
 T = TypeVar("T")
 
 
-def timer(func):
+def timer(func: Callable[..., T]) -> Callable[..., T]:
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         start = time.monotonic()

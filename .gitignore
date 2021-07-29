@@ -1,6 +1,7 @@
 # project
 notebooks/
 data/
+assets/
 
 # ci
 .gitlab-ci.yml

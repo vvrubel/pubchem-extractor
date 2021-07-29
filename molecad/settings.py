@@ -10,9 +10,9 @@ class Settings(BaseSettings):
     fetch_dir: Path = Field("./data/fetch", env="FETCH_DIR")
     split_dir: Path = Field("./data/split", env="SPLIT_DIR")
 
-    api_url: HttpUrl = Field("http://localhost:8000", env="API_URL")
+    api_url: HttpUrl = Field("http://127.0.0.1:8000", env="API_URL")
     api_version: str = Field("", env="API_VERSION")
-    app_url: HttpUrl = Field("http://localhost:8050", env="APP_URL")
+    app_url: HttpUrl = Field("http://127.0.0.1:8050", env="APP_URL")
 
     mongo_host: str = Field("127.0.0.1", env="MONGO_HOST")
     mongo_port: int = Field(27017, env="MONGO_PORT")

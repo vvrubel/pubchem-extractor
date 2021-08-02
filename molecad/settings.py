@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from pydantic import BaseSettings, Field, HttpUrl
-from pymongo import MongoClient
 
 
 class Settings(BaseSettings):
@@ -28,27 +27,6 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
-
-    @property
-    def version(self):
-        import importlib_metadata
-        return importlib_metadata.version("molecad")
-
-    def get_db(self):
-        return MongoClient(
-            host=self.mongo_host,
-            port=self.mongo_port,
-            username=self.mongo_user,
-            password=self.mongo_password,
-            authSource=self.mongo_auth_source,
-        )[self.db_name]
-
-    def get_collections(self):
-        db = self.get_db()
-        properties = db[self.properties]
-        molecules = db[self.molecules]
-        mfp_counts = db[self.mfp_counts]
-        return properties, molecules, mfp_counts
 
 
 settings = Settings()

@@ -6,10 +6,10 @@ from typing import (
 import requests
 from loguru import logger
 
-from .downloader_types import Domain, NamespCmpd, OperationComplex, Out, PropertyTags
-from .errors import BadDomainError, BadNamespaceError, BadOperationError
-from .utils import chunked, concat, generate_ids
-from .validator import (
+from molecad.console.url_parts import Domain, NamespCmpd, OperationComplex, Out, PropertyTags
+from molecad.errors import BadDomainError, BadNamespaceError, BadOperationError
+from molecad.utils import chunked, concat, generate_ids
+from molecad.validator import (
     is_complex_operation,
     is_compound,
     is_namespace_search,

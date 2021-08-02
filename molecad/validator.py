@@ -1,6 +1,6 @@
 from typing import Optional, Sequence
 
-from .downloader_types import (
+from molecad.console.url_parts import (
     Domain, NamespCmpd, Operation, OperationComplex, PropertyTags, SearchPrefix, SearchSuffix,
 )
 from .errors import EmptySmilesError

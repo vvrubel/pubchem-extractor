@@ -5,13 +5,29 @@ from pydantic import NonNegativeInt, PositiveInt
 from pymongo.cursor import Cursor
 from rdkit import Chem
 
-from .settings import settings
 from .utils import timer
 
-db = settings.get_db()
-properties, molecules, mfp_counts = settings.get_collections()
-db_collections = properties, molecules, mfp_counts
 
+# @property
+# def version(self):
+#     import importlib_metadata
+#     return importlib_metadata.version("molecad")
+#
+# def get_db(self):
+#     return MongoClient(
+#         host=self.mongo_host,
+#         port=self.mongo_port,
+#         username=self.mongo_user,
+#         password=self.mongo_password,
+#         authSource=self.mongo_auth_source,
+#     )[self.db_name]
+#
+# def get_collections(self):
+#     db = self.get_db()
+#     properties = db[self.properties]
+#     molecules = db[self.molecules]
+#     mfp_counts = db[self.mfp_counts]
+#     return properties, molecules, mfp_counts
 
 def run_search(smiles: str) -> List[str]:
     """

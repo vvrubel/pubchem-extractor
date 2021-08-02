@@ -7,30 +7,37 @@ import pymongo.errors
 import rdkit.RDLogger
 from mongordkit import Search
 
-from .cli_db import create_molecule, delete_broken, drop_db, upload_data
-from .downloader import execute_requests
-from .settings import Settings, settings
-from .utils import (
-    check_dir, chunked, converter, file_path, parse_first_and_last, read_json, timer, write_json,
+from molecad.console.cli_db import create_molecule, delete_broken, drop_db, upload_data
+from molecad.console.downloader import execute_requests
+from molecad.console.utils import (
+    build_filename,
+    check_dir,
+    chunked,
+    convert_data,
+    parse_first_and_last,
+    read_json,
+    write_json,
 )
+from molecad.settings import Settings, settings
+from molecad.utils import timer
 
 rdkit.RDLogger.DisableLog("rdApp.*")
 
 
 @click.group(
     help='Консольная утилита для извлечения информации о свойствах молекул с серверов Pubchem, '
-    'сохранения полученной информации в файлы формата JSON. Также с помощью утилиты можно '
-    'загружать полученные данные в базу MongoDB и подготавливать их для поиска молекул. ',
+         'сохранения полученной информации в файлы формата JSON и загрузки содержимого файлов в '
+         'локальную базу данных.',
     invoke_without_command=True
 )
 @click.option(
-    "--database", type=click.Choice(["PROD", "DEV"], case_sensitive=False),
+    "--setup", type=click.Choice(["PROD", "DEV"], case_sensitive=False),
     help='Опция позволяет выбирать конфигурационный файл, содержащий переменные окружения и '
          'настройки базы данных.'
 )
 @click.pass_context
-def molecad(ctx: click.Context, database: str):
-    if database == "PROD":
+def molecad(ctx: click.Context, setup: str):
+    if setup == "PROD":
         ctx.obj = Settings(_env_file=".env.prod", _env_file_encoding="utf-8")
     else:
         ctx.obj = settings
@@ -65,9 +72,9 @@ def molecad(ctx: click.Context, database: str):
     type=int,
     help='Максимальное число идентификаторов в сохраняемом файле, по умолчанию равно 1000.',
 )
-@click.pass_obj
-def fetch(obj: Settings, start: int, stop: int, size: int, f_size: int) -> None:
-    fetch_dir = pathlib.Path(obj.fetch_dir)
+@timer
+def fetch(start: int, stop: int, size: int, f_size: int) -> None:
+    fetch_dir = pathlib.Path(settings.fetch_dir)
     new_dir: pathlib.Path = check_dir(fetch_dir, start, stop)
     click.secho(f"Файлы будут сохранены в директорию {new_dir}", fg="cyan")
     data = execute_requests(start, stop + 1, size)
@@ -75,7 +82,7 @@ def fetch(obj: Settings, start: int, stop: int, size: int, f_size: int) -> None:
     for chunk in chunks:
         first, last = parse_first_and_last(chunk)
         click.secho(f"Сохраняю данные для CID: {first} – {last}", fg="blue")
-        file: pathlib.Path = file_path(new_dir, first, last)
+        file: pathlib.Path = build_filename(new_dir, first, last)
         write_json(file, chunk)
 
 
@@ -98,18 +105,18 @@ def fetch(obj: Settings, start: int, stop: int, size: int, f_size: int) -> None:
     type=int,
     help='Максимальное число идентификаторов в сохраняемом файле, по умолчанию равно 1000.',
 )
-@click.pass_obj
-def split(obj: Settings, file: pathlib.Path, f_size: int) -> None:
-    split_dir = pathlib.Path(obj.split_dir)
-    data: List[Dict[str, Any]] = converter(read_json(file))
+@timer
+def split(file: pathlib.Path, f_size: int) -> None:
+    split_dir = pathlib.Path(settings.split_dir)
+    data: List[Dict[str, Any]] = convert_data(read_json(file))
     click.secho(f"Открываю файл {file}", fg="cyan")
     start, stop = parse_first_and_last(data)
     new_dir: pathlib.Path = check_dir(split_dir, start, stop)
     for i, chunk in enumerate(chunked(data, f_size), start=1):
         first, last = parse_first_and_last(chunk)
-        ch_path: pathlib.Path = file_path(new_dir, first, last)
-        write_json(ch_path, chunk)
-        click.secho(f"Записываю в файл {ch_path}", fg="green")
+        chunk_path: pathlib.Path = build_filename(new_dir, first, last)
+        write_json(chunk_path, chunk)
+        click.secho(f"Записываю в файл {chunk_path}", fg="green")
 
 
 @molecad.command(
@@ -143,7 +150,7 @@ def populate(obj: Settings, f_dir: pathlib.Path, drop: bool) -> None:
     for file in f_dir.glob("./**/*.json"):
         try:
             click.secho(f"Импортирую файл {file}", fg="cyan")
-            data: List[Dict[str, Any]] = converter(read_json(file))
+            data: List[Dict[str, Any]] = convert_data(read_json(file))
             total += len(data)
             data, c = create_molecule(data, molecules)
             created += c

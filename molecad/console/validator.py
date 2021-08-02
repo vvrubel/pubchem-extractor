@@ -1,9 +1,14 @@
 from typing import Optional, Sequence
 
 from molecad.console.url_parts import (
-    Domain, NamespCmpd, Operation, OperationComplex, PropertyTags, SearchPrefix, SearchSuffix,
+    Domain,
+    NamespCmpd,
+    Operation,
+    OperationComplex,
+    PropertyTags,
+    SearchPrefix,
+    SearchSuffix,
 )
-from .errors import EmptySmilesError
 
 
 def is_compound(domain: str) -> bool:
@@ -67,14 +72,3 @@ def check_tags(tags: Optional[Sequence[str]]) -> bool:
         return False
     else:
         return all(isinstance(tag, PropertyTags) for tag in tags)
-
-
-def check_smiles(smiles) -> None:
-    """
-    Проверяет является ли значение пустой строкой, если строка пустая, то рейзит ошибку
-    ``EmptySmilesError``.
-    :param smiles: Значение в словаре по ключу ``CanonicalSMILES``.
-    :return: None.
-    """
-    if smiles is None:
-        raise EmptySmilesError

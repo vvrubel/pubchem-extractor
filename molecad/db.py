@@ -1,44 +1,27 @@
 from typing import Any, Dict, List
 
-from mongordkit.Search import substructure
+from mongordkit.Search import similarity, substructure
 from pydantic import NonNegativeInt, PositiveInt
+from pymongo import MongoClient
 from pymongo.cursor import Cursor
 from rdkit import Chem
+from rdkit.Chem import AllChem
 
+from .settings import Settings
 from .utils import timer
 
+# Morgan fingerprints
+DEFAULT_MORGAN_RADIUS = 2
+DEFAULT_MORGAN_LEN = 2048
 
-# @property
-# def version(self):
-#     import importlib_metadata
-#     return importlib_metadata.version("molecad")
-#
-# def get_db(self):
-#     return MongoClient(
-#         host=self.mongo_host,
-#         port=self.mongo_port,
-#         username=self.mongo_user,
-#         password=self.mongo_password,
-#         authSource=self.mongo_auth_source,
-#     )[self.db_name]
-#
-# def get_collections(self):
-#     db = self.get_db()
-#     properties = db[self.properties]
-#     molecules = db[self.molecules]
-#     mfp_counts = db[self.mfp_counts]
-#     return properties, molecules, mfp_counts
+# PyMongo configurations
+DEFAULT_BATCH_SIZE = 100
 
-def run_search(smiles: str) -> List[str]:
-    """
-    Функция генерирует объект молекулы для работы rdkit, после этот объект используется для
-    подструктурного поиска по коллекции "molecules".
-    :param smiles: Строковое представление структуры молекулы.
-    :return: Список молекул, удовлетворяют результатам поиска по заданной подструктуре.
-    """
-    q_mol: Chem.Mol = Chem.MolFromSmiles(smiles)
-    search_results: List[str] = substructure.SubSearch(q_mol, molecules)
-    return search_results
+setup = Settings()
+db = MongoClient(setup.mongo_uri)[setup.db_name]
+properties = db[setup.prop_collection]
+molecules = db[setup.mol_collection]
+mfp_counts = db[setup.mfp_collection]
 
 
 def paging_pipeline(mol_lst: List[str], skip: int, limit: int) -> List[Dict[str, Any]]:
@@ -50,23 +33,10 @@ def paging_pipeline(mol_lst: List[str], skip: int, limit: int) -> List[Dict[str,
     :param limit: Число записей, которые нужно показать.
     :return: Список стадий.
     """
-    match_ = {
-        "$match": {
-            "index": {"$in": mol_lst}
-        }
-    }
-    project_ = {
-        "$project": {
-            "_id": 0,
-            "index": 0
-        }
-    }
-    skip_ = {
-        "$skip": skip
-    }
-    limit_ = {
-        "$limit": limit
-    }
+    match_ = {"$match": {"index": {"$in": mol_lst}}}
+    project_ = {"$project": {"_id": 0, "index": 0}}
+    skip_ = {"$skip": skip}
+    limit_ = {"$limit": limit}
     return [match_, project_, skip_, limit_]
 
 
@@ -78,11 +48,7 @@ def summary_pipeline(mol_lst: List[str]) -> List[Dict[str, Any]]:
     :param mol_lst: Список молекул из функции ``run_search``.
     :return: Список стадий.
     """
-    match_ = {
-        "$match": {
-            "index": {"$in": mol_lst}
-        }
-    }
+    match_ = {"$match": {"index": {"$in": mol_lst}}}
     group_ = {
         "$group": {
             "_id": 0,
@@ -109,11 +75,11 @@ def summary_pipeline(mol_lst: List[str]) -> List[Dict[str, Any]]:
             "_id": 0,
             "MolecularWeight": {
                 "Average": {"$round": ["$AvgMolW", 2]},
-                "StandardDeviation": {"$round": ["$StdMolW", 2]}
+                "StandardDeviation": {"$round": ["$StdMolW", 2]},
             },
             "XLogP": {
                 "Average": {"$round": ["$AvgLogP", 2]},
-                "StandardDeviation": {"$round": ["$StdLogP", 2]}
+                "StandardDeviation": {"$round": ["$StdLogP", 2]},
             },
             "HBondDonorCount": {
                 "Average": {"$round": ["$AvgDonor", 2]},
@@ -138,25 +104,53 @@ def summary_pipeline(mol_lst: List[str]) -> List[Dict[str, Any]]:
             "Volume3D": {
                 "Average": {"$round": ["$AvgVol3D", 2]},
                 "StandardDeviation": {"$round": ["$StdVol3D", 2]},
-            }
+            },
         }
     }
     return [match_, group_, project_]
 
 
+def run_search(smiles: str):
+    """
+    Функция генерирует объект молекулы для работы rdkit, после этот объект используется для
+    подструктурного поиска по коллекции "molecules".
+    :param smiles: Строковое представление структуры молекулы.
+    :return: Список молекул, удовлетворяют результатам поиска по заданной подструктуре.
+    """
+    q_mol: Chem.Mol = Chem.MolFromSmiles(smiles)
+    qfp = list(
+        AllChem.GetMorganFingerprintAsBitVect(
+            q_mol, DEFAULT_MORGAN_RADIUS, nBits=DEFAULT_MORGAN_LEN
+        ).GetOnBits()
+    )
+    substructures: List[str] = substructure.SubSearch(q_mol, molecules)
+
+    results = {}
+    for doc in molecules.find({"index": {"$in": substructures}}):
+        smi = doc["smiles"]
+        tanimoto = similarity.calc_tanimoto(qfp, doc["fingerprints"]["morgan_fp"]["bits"])
+        results[smi] = tanimoto
+
+    return results
+
+
 @timer
-def compound_search(
-    smiles: str, skip: NonNegativeInt, limit: PositiveInt
-) -> Cursor:
-    result = run_search(smiles)
-    pipeline = paging_pipeline(result, skip, limit)
+def compound_search(smiles: str, skip: NonNegativeInt, limit: PositiveInt) -> Cursor:
+    q_mol: Chem.Mol = Chem.MolFromSmiles(smiles)
+    substructures = run_search(q_mol)
+
+    pipeline = paging_pipeline(substructures, skip, limit)
     cursor = properties.aggregate(pipeline)
     return cursor
 
 
 @timer
 def compound_search_summary(smiles: str) -> Cursor:
-    result = run_search(smiles)
-    pipeline = summary_pipeline(result)
+    substructures = run_search(smiles)
+    pipeline = summary_pipeline(substructures)
     cursor = properties.aggregate(pipeline)
     return cursor
+
+
+if __name__ == "__main__":
+    run_search("S(=O)(=O)NC(=O)N")

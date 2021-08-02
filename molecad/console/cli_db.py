@@ -1,29 +1,30 @@
 from typing import Any, Dict, List, Tuple
 
 import click
+from loguru import logger
 from mongordkit.Database import registration
+from pymongo import MongoClient
 from pymongo.collection import Collection
+from pymongo.database import Database
 from rdkit import Chem
 
-from molecad.settings import Settings
+
+def connect_mongodb(uri: str) -> MongoClient:
+    return MongoClient(uri)
 
 
-def drop_db(setup: Settings) -> None:
+def drop_db(db: Database) -> None:
     """
     Если в базе данных есть коллекции, то она будет очищена, после чего коллекции будут созданы
     заново и на них будут созданы уникальные индексы "CID" и "index".
-    :param setup: Объект контекста с настройками.
+    :param db: Экземпляр базы данных MongoDB.
     :return: None.
     """
-    db = setup.ge
     lst = db.list_collection_names()
     if len(lst) > 0:
         for item in lst:
             db.drop_collection(item)
-            click.secho(f"Коллекция {item} удалена.", fg="red")
-
-    prop_collection, mol_collection, _ = setup.get_collections()
-    create_indexes(prop_collection, mol_collection)
+            logger.success(f"Коллекция {item} удалена.")
 
 
 def create_indexes(*args: Collection) -> None:

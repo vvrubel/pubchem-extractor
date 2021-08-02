@@ -1,10 +1,10 @@
 import json
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Tuple, TypeVar, Union
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
 
 from loguru import logger
 
-from .errors import DirExistsError
+from .errors import DirExistsError, EmptySmilesError
 
 T = TypeVar("T")
 
@@ -130,3 +130,14 @@ def write_json(f_path: Path, data: Union[Dict[int, T], List[T]]) -> None:
     """
     with open(f_path, "wt") as f:
         json.dump(data, f)
+
+
+def check_smiles(smiles: Optional[str]) -> None:
+    """
+    Проверяет является ли значение пустой строкой, если строка пустая, то бросает ошибку
+    ``EmptySmilesError``.
+    :param smiles: Значение в словаре по ключу ``CanonicalSMILES``.
+    :return: None.
+    """
+    if smiles is None:
+        raise EmptySmilesError

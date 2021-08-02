@@ -19,11 +19,30 @@ def timer(func: Callable[..., T]) -> Callable[..., T]:
         hours = work_time // 3600
         minutes = (work_time % 3600) // 60
         seconds = (work_time % 3600) % 60
-        logger.info(
+        logger.success(
             f"Время выполнения {func.__name__!r}:\n "
             f"{hours} часов, {minutes} минут, {seconds:.2f} секунд."
         )
         return val
+
+    return wrapper
+
+
+def logger_wraps(*, entry=True, exit=True, level="DEBUG"):
+    def wrapper(func):
+        name = func.__name__
+
+        @functools.wraps(func)
+        def wrapped(*args, **kwargs):
+            logger_ = logger.opt(depth=1)
+            if entry:
+                logger_.log(level, "Entering '{}' (args={}, kwargs={})", name, args, kwargs)
+            result = func(*args, **kwargs)
+            if exit:
+                logger_.log(level, "Exiting '{}' (result={})", name, result)
+            return result
+
+        return wrapped
 
     return wrapper
 

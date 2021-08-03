@@ -1,6 +1,14 @@
 import time
 from typing import (
-    Any, Dict, Iterable, Iterator, List, Optional, Sequence, TypeVar, Union,
+    Any,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    TypeVar,
+    Union,
 )
 
 import requests

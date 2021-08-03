@@ -11,22 +11,30 @@ from .cli_db import create_molecule, delete_broken, drop_db, upload_data
 from .downloader import execute_requests
 from .settings import Settings, settings
 from .utils import (
-    check_dir, chunked, converter, file_path, parse_first_and_last, read_json, timer, write_json,
+    check_dir,
+    chunked,
+    converter,
+    file_path,
+    parse_first_and_last,
+    read_json,
+    timer,
+    write_json,
 )
 
 rdkit.RDLogger.DisableLog("rdApp.*")
 
 
 @click.group(
-    help='Консольная утилита для извлечения информации о свойствах молекул с серверов Pubchem, '
-    'сохранения полученной информации в файлы формата JSON. Также с помощью утилиты можно '
-    'загружать полученные данные в базу MongoDB и подготавливать их для поиска молекул. ',
-    invoke_without_command=True
+    help="Консольная утилита для извлечения информации о свойствах молекул с серверов Pubchem, "
+    "сохранения полученной информации в файлы формата JSON. Также с помощью утилиты можно "
+    "загружать полученные данные в базу MongoDB и подготавливать их для поиска молекул. ",
+    invoke_without_command=True,
 )
 @click.option(
-    "--database", type=click.Choice(["PROD", "DEV"], case_sensitive=False),
-    help='Опция позволяет выбирать конфигурационный файл, содержащий переменные окружения и '
-         'настройки базы данных.'
+    "--database",
+    type=click.Choice(["PROD", "DEV"], case_sensitive=False),
+    help="Опция позволяет выбирать конфигурационный файл, содержащий переменные окружения и "
+    "настройки базы данных.",
 )
 @click.pass_context
 def molecad(ctx: click.Context, database: str):
@@ -49,21 +57,21 @@ def molecad(ctx: click.Context, database: str):
     "порциями до окончания работы программы, указав в качестве опции `--f-size` желаемое "
     "количество идентификаторов в сохраняемом файле, которое по умолчанию равна `1000`. "
 )
-@click.option("--start", required=True, type=int, help='Первое значение из запрашиваемых CID.')
-@click.option("--stop", required=True, type=int, help='Последнее значение из запрашиваемых CID.')
+@click.option("--start", required=True, type=int, help="Первое значение из запрашиваемых CID.")
+@click.option("--stop", required=True, type=int, help="Последнее значение из запрашиваемых CID.")
 @click.option(
     "--size",
     default=100,
     show_default=True,
     type=int,
-    help='Максимальное число идентификаторов в одном запросе, по умолчанию равно 100.',
+    help="Максимальное число идентификаторов в одном запросе, по умолчанию равно 100.",
 )
 @click.option(
     "--f-size",
     default=1000,
     show_default=True,
     type=int,
-    help='Максимальное число идентификаторов в сохраняемом файле, по умолчанию равно 1000.',
+    help="Максимальное число идентификаторов в сохраняемом файле, по умолчанию равно 1000.",
 )
 @click.pass_obj
 def fetch(obj: Settings, start: int, stop: int, size: int, f_size: int) -> None:
@@ -81,22 +89,22 @@ def fetch(obj: Settings, start: int, stop: int, size: int, f_size: int) -> None:
 
 @molecad.command(
     help='При использовании команды "db.collection.insert_many({...})" имеется ограничение на '
-    'максимально допустимое количество добавляемых документов за один раз равное 100000. '
-    'Данная функция служит для того, чтобы разрезать JSON-файлы, превышающие указанное выше '
-    'ограничение, на файлы меньшего размера.'
+    "максимально допустимое количество добавляемых документов за один раз равное 100000. "
+    "Данная функция служит для того, чтобы разрезать JSON-файлы, превышающие указанное выше "
+    "ограничение, на файлы меньшего размера."
 )
 @click.option(
     "--file",
     required=True,
     type=pathlib.Path,
-    help='Файл не подходящий под критерии загрузки файлов в MongoDB.',
+    help="Файл не подходящий под критерии загрузки файлов в MongoDB.",
 )
 @click.option(
     "--f-size",
     default=1000,
     show_default=True,
     type=int,
-    help='Максимальное число идентификаторов в сохраняемом файле, по умолчанию равно 1000.',
+    help="Максимальное число идентификаторов в сохраняемом файле, по умолчанию равно 1000.",
 )
 @click.pass_obj
 def split(obj: Settings, file: pathlib.Path, f_size: int) -> None:
@@ -113,18 +121,18 @@ def split(obj: Settings, file: pathlib.Path, f_size: int) -> None:
 
 
 @molecad.command(
-    help='Из указанной директории загружает файлы в коллекцию MongoDB. Количество документов в '
-         'файле не должно превышать 100000, иначе данный файл будет пропущен при загрузке. При '
-         'указании опции "--drop" удаляет все коллекции в базе, после чего создает их заново и '
-         'устанавливает уникальный индекс "CID" и индекс "index" на коллекциях "properties" и '
-         '"molecules". '
+    help="Из указанной директории загружает файлы в коллекцию MongoDB. Количество документов в "
+    "файле не должно превышать 100000, иначе данный файл будет пропущен при загрузке. При "
+    'указании опции "--drop" удаляет все коллекции в базе, после чего создает их заново и '
+    'устанавливает уникальный индекс "CID" и индекс "index" на коллекциях "properties" и '
+    '"molecules". '
 )
 @click.option(
     "--f-dir",
     required=True,
     type=pathlib.Path,
-    help='Путь до директории, содержащей chunked-файлы, каждый из которых представляет собой '
-    'список длиной до 100000 элементов.',
+    help="Путь до директории, содержащей chunked-файлы, каждый из которых представляет собой "
+    "список длиной до 100000 элементов.",
 )
 @click.option(
     "--drop",

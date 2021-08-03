@@ -34,23 +34,10 @@ def paging_pipeline(mol_lst: List[str], skip: int, limit: int) -> List[Dict[str,
     :param limit: Число записей, которые нужно показать.
     :return: Список стадий.
     """
-    match_ = {
-        "$match": {
-            "index": {"$in": mol_lst}
-        }
-    }
-    project_ = {
-        "$project": {
-            "_id": 0,
-            "index": 0
-        }
-    }
-    skip_ = {
-        "$skip": skip
-    }
-    limit_ = {
-        "$limit": limit
-    }
+    match_ = {"$match": {"index": {"$in": mol_lst}}}
+    project_ = {"$project": {"_id": 0, "index": 0}}
+    skip_ = {"$skip": skip}
+    limit_ = {"$limit": limit}
     return [match_, project_, skip_, limit_]
 
 
@@ -62,11 +49,7 @@ def summary_pipeline(mol_lst: List[str]) -> List[Dict[str, Any]]:
     :param mol_lst: Список молекул из функции ``run_search``.
     :return: Список стадий.
     """
-    match_ = {
-        "$match": {
-            "index": {"$in": mol_lst}
-        }
-    }
+    match_ = {"$match": {"index": {"$in": mol_lst}}}
     group_ = {
         "$group": {
             "_id": 0,
@@ -93,11 +76,11 @@ def summary_pipeline(mol_lst: List[str]) -> List[Dict[str, Any]]:
             "_id": 0,
             "MolecularWeight": {
                 "Average": {"$round": ["$AvgMolW", 2]},
-                "StandardDeviation": {"$round": ["$StdMolW", 2]}
+                "StandardDeviation": {"$round": ["$StdMolW", 2]},
             },
             "XLogP": {
                 "Average": {"$round": ["$AvgLogP", 2]},
-                "StandardDeviation": {"$round": ["$StdLogP", 2]}
+                "StandardDeviation": {"$round": ["$StdLogP", 2]},
             },
             "HBondDonorCount": {
                 "Average": {"$round": ["$AvgDonor", 2]},
@@ -122,16 +105,14 @@ def summary_pipeline(mol_lst: List[str]) -> List[Dict[str, Any]]:
             "Volume3D": {
                 "Average": {"$round": ["$AvgVol3D", 2]},
                 "StandardDeviation": {"$round": ["$StdVol3D", 2]},
-            }
+            },
         }
     }
     return [match_, group_, project_]
 
 
 @timer
-def compound_search(
-    smiles: str, skip: NonNegativeInt, limit: PositiveInt
-) -> Cursor:
+def compound_search(smiles: str, skip: NonNegativeInt, limit: PositiveInt) -> Cursor:
     result = run_search(smiles)
     pipeline = paging_pipeline(result, skip, limit)
     cursor = properties.aggregate(pipeline)

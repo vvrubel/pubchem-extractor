@@ -5,15 +5,16 @@ import click
 import pymongo
 import pymongo.errors
 import rdkit.RDLogger
+from loguru import logger
 from mongordkit import Search
 
 from .cli_db import create_molecule, delete_broken, drop_db, upload_data
 from .downloader import execute_requests
 from .settings import Settings, settings
 from .utils import (
-    check_dir,
     chunked,
     converter,
+    create_dir,
     file_path,
     parse_first_and_last,
     read_json,
@@ -31,19 +32,20 @@ rdkit.RDLogger.DisableLog("rdApp.*")
     invoke_without_command=True,
 )
 @click.option(
-    "--database",
-    type=click.Choice(["PROD", "DEV"], case_sensitive=False),
-    help="Опция позволяет выбирать конфигурационный файл, содержащий переменные окружения и "
-    "настройки базы данных.",
+    "--env",
+    type=click.Choice(["prod", "dev"], case_sensitive=False),
+    help="Опция позволяет выбирать конфигурационный файл, содержащий переменные окружения",
 )
 @click.pass_context
-def molecad(ctx: click.Context, database: str):
-    if database == "PROD":
+@timer
+def molecad(ctx: click.Context, env: str):
+    if env == "prod":
         ctx.obj = Settings(_env_file=".env.prod", _env_file_encoding="utf-8")
     else:
         ctx.obj = settings
-    click.secho(f"Команда запущена с контекстом {ctx.obj}.", fg="cyan")
-    click.secho(f"Выбрана база {ctx.obj.db_name}", fg="green")
+
+    settings.setup_logging()
+    logger.trace(f"Команда запущена с контекстом {ctx.obj}.")
 
 
 @molecad.command(
@@ -76,15 +78,15 @@ def molecad(ctx: click.Context, database: str):
 @click.pass_obj
 def fetch(obj: Settings, start: int, stop: int, size: int, f_size: int) -> None:
     fetch_dir = pathlib.Path(obj.fetch_dir)
-    new_dir: pathlib.Path = check_dir(fetch_dir, start, stop)
-    click.secho(f"Файлы будут сохранены в директорию {new_dir}", fg="cyan")
+    new_dir: pathlib.Path = create_dir(fetch_dir, start, stop)
+    logger.info(f"Файлы будут сохранены в директорию {new_dir}")
     data = execute_requests(start, stop + 1, size)
     chunks = chunked(data, f_size)
     for chunk in chunks:
         first, last = parse_first_and_last(chunk)
-        click.secho(f"Сохраняю данные для CID: {first} – {last}", fg="blue")
         file: pathlib.Path = file_path(new_dir, first, last)
         write_json(file, chunk)
+        logger.success(f"Данные для CID: {first} – {last} сохранены")
 
 
 @molecad.command(
@@ -112,7 +114,7 @@ def split(obj: Settings, file: pathlib.Path, f_size: int) -> None:
     data: List[Dict[str, Any]] = converter(read_json(file))
     click.secho(f"Открываю файл {file}", fg="cyan")
     start, stop = parse_first_and_last(data)
-    new_dir: pathlib.Path = check_dir(split_dir, start, stop)
+    new_dir: pathlib.Path = create_dir(split_dir, start, stop)
     for i, chunk in enumerate(chunked(data, f_size), start=1):
         first, last = parse_first_and_last(chunk)
         ch_path: pathlib.Path = file_path(new_dir, first, last)
@@ -142,6 +144,7 @@ def split(obj: Settings, file: pathlib.Path, f_size: int) -> None:
 @click.pass_obj
 @timer
 def populate(obj: Settings, f_dir: pathlib.Path, drop: bool) -> None:
+    logger.success(f"Выбрана база {obj.db_name}", fg="green")
     if drop:
         drop_db(obj)
     properties, molecules, mfp_counts = obj.get_collections()

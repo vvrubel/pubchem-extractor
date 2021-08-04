@@ -39,16 +39,16 @@ class CompoundSummary(BaseModel):
     Volume3D: Statistics
 
 
-app = FastAPI()
+app = FastAPI(title=settings.component_name, version=settings.version)
 
 
-@app.get(f"/{settings.api_version}/compound", response_model=List[Compound])
+@app.get("/compound", response_model=List[Compound])
 def get_compounds(smiles: str, skip: NonNegativeInt, limit: PositiveInt):
     res = compound_search(smiles, skip, limit)
     return list(res)
 
 
-@app.get(f"/{settings.api_version}/compound/summary", response_model=List[CompoundSummary])
+@app.get("/compound/summary", response_model=List[CompoundSummary])
 def get_compound_summary(smiles: str):
     res = compound_search_summary(smiles)
     return list(res)

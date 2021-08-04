@@ -16,7 +16,7 @@ from loguru import logger
 
 from .downloader_types import Domain, NamespCmpd, OperationComplex, Out, PropertyTags
 from .errors import BadDomainError, BadNamespaceError, BadOperationError
-from .utils import chunked, concat, generate_ids
+from .utils import chunked, concat, generate_ids, parse_first_and_last
 from .validator import (
     is_complex_operation,
     is_compound,
@@ -101,11 +101,10 @@ def request_data_json(url: str, **operation_options: str) -> List[Dict[str, Any]
     значений параметра ``operation`` в функции ``url_builder``.
     :return: Ответ от сервера в формате JSON, содержимое которого является списком из словарей.
     """
-    try:
-        response = requests.get(url, params=operation_options).json()
-        return response["PropertyTable"]["Properties"]
-    except KeyError:
-        raise
+    response = requests.get(url, params=operation_options)
+    response.raise_for_status()
+    res = response.json()
+    return res["PropertyTable"]["Properties"]
 
 
 def delay_iterations(
@@ -177,18 +176,22 @@ def execute_requests(start: int, stop: int, maxsize: int = 100) -> Iterator[Dict
             logger.debug("Делаю запрос по URL: {}", url)
             res = request_data_json(url)
         except requests.exceptions.HTTPError:
-            logger.error("Ошибка при выполнении запроса.", exc_info=True)
+            logger.opt(exception=True).error("Ошибка при выполнении запроса:")
             break
         except KeyError:
-            logger.error("Неверный формат ответа от сервера.")
+            logger.opt(exception=True).error("Неверный формат ответа от сервера.")
             break
         except BadDomainError:
             logger.error("В данной версии сервиса поиск возможен только по базе данных 'Compound'")
+            break
         except BadNamespaceError:
             logger.error("Пространство имен поиска по базе данных 'Compound' задано некорректно")
+            break
         except BadOperationError:
             logger.error("Ошибка при составлении операции")
+            break
         else:
-            logger.debug("Пришел ответ: {}", res)
+            first, last = parse_first_and_last(res)
+            logger.info(f"Получены CID: {first}–{last}")
             for rec in res:
                 yield rec

@@ -1,11 +1,17 @@
+import logging
+import sys
 from pathlib import Path
 
+from loguru import logger
 from pydantic import BaseSettings, Field, HttpUrl
 from pymongo import MongoClient
 
 
+# from .log import DevelopFormatter, JsonSink
+
+
 class Settings(BaseSettings):
-    env: str = Field("PROD", env="ENV")
+    env: str = Field("dev", env="ENV")
     project_dir: Path = Field(".", env="PROJ_DIR")
     fetch_dir: Path = Field("./data/fetch", env="FETCH_DIR")
     split_dir: Path = Field("./data/split", env="SPLIT_DIR")
@@ -26,6 +32,8 @@ class Settings(BaseSettings):
     molecules: str = Field("molecules", env="MONGO_MOLECULES_COLLECTION")
     mfp_counts: str = Field("mfp_counts", env="MONGO_MFP_COUNTS_COLLECTION")
 
+    component_name: str = "molecad"
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -35,6 +43,42 @@ class Settings(BaseSettings):
         import importlib_metadata
 
         return importlib_metadata.version("molecad")
+
+    def setup_logging(self):
+        class InterceptHandler(logging.Handler):
+            def emit(self, record):
+                # Get corresponding Loguru level if it exists
+                try:
+                    level = logger.level(record.levelname).name
+                except ValueError:
+                    level = record.levelno
+
+                # Find caller from where originated the logged message
+                frame, depth = logging.currentframe(), 2
+                while frame.f_code.co_filename == logging.__file__:
+                    frame = frame.f_back
+                    depth += 1
+
+                logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+
+        if self.env == "dev":
+            logger.add(
+                sys.stdout,
+                level="DEBUG",
+                format="{name} | {function} | {line}\n {level} | {message}",
+                colorize=True,
+                serialize=True,
+            )
+        else:
+            logger.add(
+                "logs/prod.log",
+                level="INFO",
+                format="{time} | {name} | {function} | {line} \n{level} | {message} \n{extra[i]}",
+                colorize=True,
+            )
+        # logging.getLogger("uvicorn.access").handlers = [InterceptHandler()]
+
+        logging.basicConfig(handlers=[InterceptHandler()], level=0)
 
     def get_db(self):
         return MongoClient(

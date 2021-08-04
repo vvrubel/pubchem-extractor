@@ -7,14 +7,13 @@ from typing import Any, Callable, Dict, Iterable, Iterator, List, Tuple, TypeVar
 
 from loguru import logger
 
-from molecad.errors import DirExistsError
-
 T = TypeVar("T")
 
 
 def timer(func: Callable[..., T]) -> Callable[..., T]:
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
+        # logger.add("logs/timer.log", level="INFO", format="{time} | {level} | {message}")
         start = time.monotonic()
         val = func(*args, **kwargs)
         end = time.monotonic()
@@ -22,7 +21,7 @@ def timer(func: Callable[..., T]) -> Callable[..., T]:
         hours = work_time // 3600
         minutes = (work_time % 3600) // 60
         seconds = (work_time % 3600) % 60
-        print(
+        logger.success(
             f"Время выполнения {func.__name__!r}:\n "
             f"{hours} часов, {minutes} минут, {seconds:.2f} секунд."
         )
@@ -84,10 +83,11 @@ def parse_first_and_last(obj: List[Dict[str, Any]]) -> Tuple[int, int]:
     return first, last
 
 
-def check_dir(parent_dir: Path, first_id: int, last_id: int) -> Path:
+def create_dir(parent_dir: Path, first_id: int, last_id: int) -> Path:
     """
     Рекурсивная функция, которая пробует создать поддиректорию c именем ``name`` в директории
-    ``dir_path``, если такая поддиректория уже существует, то выбрасывает ошибку.
+    ``dir_path``, если такая поддиректория уже существует, то прибавляет к ``name`` суффикс и
+    переходит в начало цикла проверки. При отсутствии директории с заданным именем – создает её.
     Имя поддиректории генерируется из значений запрашиваемых идентификаторов.
     :param parent_dir: Путь до родительской директории.
     :param first_id: Первое значение из запрашиваемых идентификаторов.
@@ -95,14 +95,14 @@ def check_dir(parent_dir: Path, first_id: int, last_id: int) -> Path:
     :return: Путь до созданной поддиректории.
     """
     name = concat(first_id, last_id, sep="–")
-    try:
-        new_dir = Path(parent_dir).resolve() / str(name)
-        new_dir.mkdir(parents=True, exist_ok=False)
-    except DirExistsError:
-        logger.error("Директория уже существует.")
-        raise
-    else:
-        return new_dir
+    inc = 1
+    new_dir = Path(parent_dir).resolve() / name
+    while new_dir.exists():
+        new_dir = Path(parent_dir).resolve() / concat(name, inc, sep="_")
+        inc += 1
+
+    new_dir.mkdir(parents=True, exist_ok=False)
+    return new_dir
 
 
 def file_path(dir_path: Path, first_id: int, last_id: int) -> Path:

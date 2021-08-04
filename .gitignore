@@ -1,6 +1,8 @@
 # project
 notebooks/
 data/
+logs/
+*.log
 assets/
 
 # ci

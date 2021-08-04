@@ -3,7 +3,7 @@ from typing import List, Optional
 from fastapi import FastAPI
 from pydantic import BaseModel, NonNegativeInt, PositiveInt
 
-from .api_db import compound_search, compound_search_summary
+from .search import compound_search, compound_search_summary
 from .settings import settings
 
 

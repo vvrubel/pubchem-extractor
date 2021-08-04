@@ -13,7 +13,6 @@ T = TypeVar("T")
 def timer(func: Callable[..., T]) -> Callable[..., T]:
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        # logger.add("logs/timer.log", level="INFO", format="{time} | {level} | {message}")
         start = time.monotonic()
         val = func(*args, **kwargs)
         end = time.monotonic()

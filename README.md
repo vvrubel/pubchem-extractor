@@ -130,9 +130,9 @@ SPLIT_DIR|Шаблон именования пути до директорий �
 
 Справка по работе утилиты:
 ```
-$ poetry run python -m molecad.cli --help  
+$ poetry run python -m molecad.console --help  
 
-Usage: python -m molecad.cli [OPTIONS] COMMAND [ARGS]...
+Usage: python -m molecad.console [OPTIONS] COMMAND [ARGS]...
 
   Консольная утилита для извлечения информации о свойствах молекул с серверов
   Pubchem, сохранения полученной информации в файлы формата JSON. Также с
@@ -162,9 +162,9 @@ Commands:
 
 Справка по команде `fetch`:  
 ```
-$ poetry run python -m molecad.cli fetch --help
+$ poetry run python -m molecad.console fetch --help
 
-Usage: python -m molecad.cli fetch [OPTIONS]
+Usage: python -m molecad.console fetch [OPTIONS]
 
   Извлекает и сохраняет информацию из базы данных Pubchem – 'Compound'. Для
   совершения запроса к серверу необходимо уточнить диапазон идентификаторов
@@ -188,12 +188,13 @@ Options:
 
 ```
 Пример запуска команды `fetch`:
+
 ```
 
-$ poetry run python -m molecad.cli fetch --start 1 \
-                                         --stop 1000000 \
-                                         --size 100 \
-                                         --f-size 1000  
+$ poetry run python -m molecad.console --env dev fetch --start 1 \
+                                                       --stop 1000 \
+                                                       --size 100 \
+                                                       --f-size 1000 
 ```
 
 Так как MongoDB имеет ограничение на количество создаваемых документов при разовой загрузке в базу 
@@ -207,9 +208,9 @@ $ poetry run python -m molecad.cli fetch --start 1 \
 
 Справка по команде `split`:
 ```
-$ poetry run python -m molecad.data.console split --help
+$ poetry run python -m molecad.console split --help
 
-Usage: python -m molecad.cli split [OPTIONS]
+Usage: python -m molecad.console split [OPTIONS]
 
   При использовании команды "db.collection.insert_many({...})" имеется
   ограничение на максимально допустимое количество добавляемых документов за
@@ -225,10 +226,10 @@ Options:
   --help            Show this message and exit.
 ```
 Пример запуска команды `split`:
+
 ```
-Пример запуска команды:
-$ poetry run python -m molecad.cli split --file <path/to/file>.json \
-                                         --f-size 1000
+$ poetry run python -m molecad.console --env dev split --file <path/to/file>.json \
+                                                       --f-size 1000                                                        
 ```
 
 Файлы, которые содержат в себе до 100000 документов, можно загрузить в локальную базу с помощью
@@ -252,7 +253,7 @@ mongod [--dbpath <path_to_mongodb./data/db>] --auth
 Справка по команде `populate`:
 
 ```
-$ poetry run python -m molecad.cli --database DEV populate --help
+$ poetry run python -m molecad.console --database DEV populate --help
            
   Из указанной директории загружает файлы в коллекцию MongoDB. Количество
   документов в файле не должно превышать 100000, иначе данный файл будет
@@ -269,7 +270,7 @@ Options:
 ```
 Пример запуска команды `populate`:
 ```
-$ poetry run python -m molecad.cli --setup="PROD" populate --f-dir <path_to_dir> --drop 
+$ poetry run python -m molecad.console --env dev populate --f-dir <path_to_dir> --drop 
 ```
 
 ## Использование mongo-rdkit для подструктурного поиска по базе

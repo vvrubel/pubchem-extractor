@@ -1,9 +1,7 @@
 import json
-import sys
 import traceback as tb
 from datetime import datetime
 
-from loguru import logger
 from starlette_context import context
 
 
@@ -52,45 +50,11 @@ class DevelopFormatter(LoguruContainer):
         extra = " ".join(f"<lvl>{k}={str(v)}</>" for k, v in record["extra"].items())
 
         return (
-            "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</> "
+            "<white>{time:YYYY-MM-DD HH:mm:ss.SSS}</> "
             "| <lvl>{level: <8}</> | "
-            f"<cyan>{self.component_name}</> "
-            "<cyan>{name}</>:<cyan>{function}</>:<cyan>{line}</> "
+            f"<magenta>{self.component_name}</> "
+            "<cyan>{name}</>:<green>{function}</>:<blue>{line}</> "
             "- <lvl>{message}</> - "
             + extra
             + ("\n{exception}\n" if record.get("exception") is not None else "\n")
         )
-
-
-#
-# logger.remove()
-# logger.add(
-#     sys.stdout,
-#     colorize=True,
-#     format="<green>{time:HH:mm:ss}</green> | {level} | <level>{message}</level>",
-# )
-# logger.add("logs/fetch.log", level="DEBUG", format="{time} {level} {message}")
-
-logger.configure(
-    handlers=[
-        dict(sink=sys.stderr, format="[{time}] | {level} | {message}"),
-        dict(sink="file.log", enqueue=True, serialize=True),
-    ],
-    levels=[dict(name="NEW", no=13, icon="¤", color="")],
-    extra={"common_to_all": "default"},
-    patcher=lambda record: record["extra"].update(some_value=42),
-    activation=[("my_module.secret", False), ("another_library.module", True)],
-)
-
-# Set a default "extra" dict to logger across all modules, without "bind()"
-extra = {"context": "foo"}
-logger.configure(extra=extra)
-logger.add(sys.stderr, format="{extra[context]} - {message}")
-logger.info("Context without bind")
-# => "foo - Context without bind"
-logger.bind(context="bar").info("Suppress global context")
-# => "bar - Suppress global context"
-
-fmt = "{time} - {name} - {level} - {message}"
-logger.add("spam.log", level="DEBUG", format=fmt)
-logger.add(sys.stderr, level="ERROR", format=fmt)

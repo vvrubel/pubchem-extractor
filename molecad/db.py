@@ -1,29 +1,49 @@
 from typing import Any, Dict, List, Tuple
 
-import click
+from loguru import logger
 from mongordkit.Database import registration
+from pymongo import MongoClient
 from pymongo.collection import Collection
+from pymongo.database import Database
 from rdkit import Chem
 
-from .settings import Settings
+from .errors import EmptySmilesError
+from .settings import Settings, settings
 
 
-def drop_db(setup: Settings) -> None:
+def get_db(setup: Settings) -> Database:
+    """
+    Инициализирует базу данных в соответствии с настройками окружения.
+    :param setup: Объект настроек.
+    :return: Объект базы данных.
+    """
+    return MongoClient(setup.mongo_uri)[setup.db_name]
+
+
+def drop_db(database: Database) -> None:
     """
     Если в базе данных есть коллекции, то она будет очищена, после чего коллекции будут созданы
     заново и на них будут созданы уникальные индексы "CID" и "index".
-    :param setup: Объект контекста с настройками.
+    :param database: Объект базы данных.
     :return: None.
     """
-    db = setup.get_db()
-    lst = db.list_collection_names()
+    lst = database.list_collection_names()
     if len(lst) > 0:
         for item in lst:
-            db.drop_collection(item)
-            click.secho(f"Коллекция {item} удалена.", fg="red")
+            database.drop_collection(item)
+            logger.warning(f"Коллекция {item} удалена.")
 
-    prop_collection, mol_collection, _ = setup.get_collections()
-    create_indexes(prop_collection, mol_collection)
+
+def get_collections(database: Database) -> Tuple[Collection, Collection, Collection]:
+    """
+    Инициализация всех коллекций переданной базы данных.
+    :param database: База данныхngoDB.
+    :return: Кортеж из трех коллекций.
+    """
+    properties = database[settings.properties]
+    molecules = database[settings.molecules]
+    mfp_counts = database[settings.mfp_counts]
+    return properties, molecules, mfp_counts
 
 
 def create_indexes(*args: Collection) -> None:
@@ -34,9 +54,9 @@ def create_indexes(*args: Collection) -> None:
     """
     for arg in args:
         arg.create_index("CID", unique=True)
-        click.secho(f'На коллекции {arg.name} создан уникальный индекс "CID".', fg="green")
+        logger.info(f'На коллекции {arg.name} создан уникальный индекс "CID".')
         arg.create_index("index")
-        click.secho(f'На коллекции {arg.name} создан индекс – "index".', fg="green")
+        logger.info(f'На коллекции {arg.name} создан индекс – "index".')
 
 
 def register_from_smiles(smiles: str) -> Dict[str, Any]:
@@ -46,6 +66,8 @@ def register_from_smiles(smiles: str) -> Dict[str, Any]:
     :return: Словарь–репрезентация молекулы, сгенерированный из SMILES, который будет загружен в
     MongoDB в качестве документа в коллекцию "molecules".
     """
+    if smiles is None:
+        raise EmptySmilesError
     rdmol = Chem.MolFromSmiles(smiles)
     if rdmol is None:
         raise TypeError
@@ -69,31 +91,33 @@ def create_molecule(
     представлением молекул.
     :return: Кортеж из измененной ``data`` и количества сгенерированных схем.
     """
-    n = 0
+    inserted = 0
     for molprop in data:
         if "CanonicalSMILES" not in molprop:
             continue
+
         smiles = molprop["CanonicalSMILES"]
         cid = molprop["CID"]
+
         try:
             scheme = register_from_smiles(smiles)
-        except TypeError:
-            # if scheme is None
+        except (TypeError, EmptySmilesError):
             continue
-
-        scheme["CID"] = cid
+        else:
+            # добавляем в схему поле "CID"
+            scheme["CID"] = cid
 
         mol_collection.insert_one(scheme)
-        n += 1
-        # из схемы берем поле "index" и добавляем его к данным в словаре
+        inserted += 1
+        # к исходным данным добавляем поле "index" из схемы
         molprop["index"] = scheme["index"]
 
-        # приводим значение ключа "MolecularWeight" к float
+        # приводим значение "MolecularWeight" к float
         mol_weight = molprop["MolecularWeight"]
         if mol_weight is not None:
             molprop["MolecularWeight"] = float(mol_weight)
 
-    return data, n
+    return data, inserted
 
 
 def upload_data(data: List[Dict[str, Any]], collection: Collection) -> Tuple[int, int]:

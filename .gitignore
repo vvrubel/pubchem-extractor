@@ -1,7 +1,7 @@
 # project
 notebooks/
 data/
-logs/
+tmp/
 *.log
 assets/
 
@@ -114,7 +114,6 @@ celerybeat.pid
 
 # Environments
 .env.prod
-.env.naive
 .env
 .venv
 env/

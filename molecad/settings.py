@@ -4,10 +4,8 @@ from pathlib import Path
 
 from loguru import logger
 from pydantic import BaseSettings, Field, HttpUrl
-from pymongo import MongoClient
 
-
-# from .log import DevelopFormatter, JsonSink
+from .log import DevelopFormatter, JsonSink
 
 
 class Settings(BaseSettings):
@@ -15,6 +13,7 @@ class Settings(BaseSettings):
     project_dir: Path = Field(".", env="PROJ_DIR")
     fetch_dir: Path = Field("./data/fetch", env="FETCH_DIR")
     split_dir: Path = Field("./data/split", env="SPLIT_DIR")
+    logs_dir: Path = Field("./tmp", env="LOG_DIR")
 
     api_url: HttpUrl = Field("http://127.0.0.1:8000", env="API_URL")
     api_version: str = Field("", env="API_VERSION")
@@ -44,6 +43,13 @@ class Settings(BaseSettings):
 
         return importlib_metadata.version("molecad")
 
+    @property
+    def mongo_uri(self):
+        return (
+            f"mongodb://{self.mongo_user}:{self.mongo_password}@{self.mongo_host}:"
+            f"{self.mongo_port}/{self.mongo_auth_source}"
+        )
+
     def setup_logging(self):
         class InterceptHandler(logging.Handler):
             def emit(self, record):
@@ -61,40 +67,24 @@ class Settings(BaseSettings):
 
                 logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
+        logging.getLogger().handlers = [InterceptHandler()]
+        logger.remove()
         if self.env == "dev":
-            logger.add(
-                sys.stdout,
-                level="DEBUG",
-                format="{name} | {function} | {line}\n {level} | {message}",
-                colorize=True,
-                serialize=True,
-            )
+            develop_fmt = DevelopFormatter(self.component_name)
+            logger.add(sys.stdout, format=develop_fmt, level="DEBUG", backtrace=True, diagnose=True)
         else:
-            logger.add(
-                "logs/prod.log",
-                level="INFO",
-                format="{time} | {name} | {function} | {line} \n{level} | {message} \n{extra[i]}",
-                colorize=True,
-            )
-        # logging.getLogger("uvicorn.access").handlers = [InterceptHandler()]
+            json_sink = JsonSink(self.component_name)
+            logger.add(json_sink)
 
-        logging.basicConfig(handlers=[InterceptHandler()], level=0)
-
-    def get_db(self):
-        return MongoClient(
-            host=self.mongo_host,
-            port=self.mongo_port,
-            username=self.mongo_user,
-            password=self.mongo_password,
-            authSource=self.mongo_auth_source,
-        )[self.db_name]
-
-    def get_collections(self):
-        db = self.get_db()
-        properties = db[self.properties]
-        molecules = db[self.molecules]
-        mfp_counts = db[self.mfp_counts]
-        return properties, molecules, mfp_counts
+        logging.getLogger("uvicorn.access").handlers = [InterceptHandler()]
 
 
 settings = Settings()
+
+#
+# def setup_routing(app: FastAPI):
+#     from .routes import route
+#     from .webhooks import webhooks_route
+#
+#     app.include_router(route, prefix=setup.api_version + "/api")
+#     app.include_router(webhooks_route, prefix=setup.api_version + "/webhooks")

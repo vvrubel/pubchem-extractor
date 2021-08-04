@@ -8,7 +8,15 @@ import rdkit.RDLogger
 from loguru import logger
 from mongordkit import Search
 
-from .cli_db import create_molecule, delete_broken, drop_db, upload_data
+from .db import (
+    create_indexes,
+    create_molecule,
+    delete_broken,
+    drop_db,
+    get_collections,
+    get_db,
+    upload_data,
+)
 from .downloader import execute_requests
 from .settings import Settings, settings
 from .utils import (
@@ -37,7 +45,6 @@ rdkit.RDLogger.DisableLog("rdApp.*")
     help="Опция позволяет выбирать конфигурационный файл, содержащий переменные окружения",
 )
 @click.pass_context
-@timer
 def molecad(ctx: click.Context, env: str):
     if env == "prod":
         ctx.obj = Settings(_env_file=".env.prod", _env_file_encoding="utf-8")
@@ -76,10 +83,12 @@ def molecad(ctx: click.Context, env: str):
     help="Максимальное число идентификаторов в сохраняемом файле, по умолчанию равно 1000.",
 )
 @click.pass_obj
+@timer
 def fetch(obj: Settings, start: int, stop: int, size: int, f_size: int) -> None:
     fetch_dir = pathlib.Path(obj.fetch_dir)
     new_dir: pathlib.Path = create_dir(fetch_dir, start, stop)
     logger.info(f"Файлы будут сохранены в директорию {new_dir}")
+
     data = execute_requests(start, stop + 1, size)
     chunks = chunked(data, f_size)
     for chunk in chunks:
@@ -90,10 +99,10 @@ def fetch(obj: Settings, start: int, stop: int, size: int, f_size: int) -> None:
 
 
 @molecad.command(
-    help='При использовании команды "db.collection.insert_many({...})" имеется ограничение на '
-    "максимально допустимое количество добавляемых документов за один раз равное 100000. "
-    "Данная функция служит для того, чтобы разрезать JSON-файлы, превышающие указанное выше "
-    "ограничение, на файлы меньшего размера."
+    help='При использовании команды MongoDB "db.collection.insert_many({...})" имеется '
+    "ограничение на максимально допустимое количество добавляемых документов за раз – 100000. "
+    "Данная функция служит для того, чтобы разрезать JSON-файлы, превышающие указанное "
+    "ограничение, на файлы меньшего размера с целью сделать их пригодными для загрузки в базу."
 )
 @click.option(
     "--file",
@@ -106,28 +115,34 @@ def fetch(obj: Settings, start: int, stop: int, size: int, f_size: int) -> None:
     default=1000,
     show_default=True,
     type=int,
-    help="Максимальное число идентификаторов в сохраняемом файле, по умолчанию равно 1000.",
+    help="Максимальное число идентификаторов в каждом из сохраняемых файлов, по умолчанию – 1000.",
 )
 @click.pass_obj
+@timer
 def split(obj: Settings, file: pathlib.Path, f_size: int) -> None:
     split_dir = pathlib.Path(obj.split_dir)
     data: List[Dict[str, Any]] = converter(read_json(file))
-    click.secho(f"Открываю файл {file}", fg="cyan")
+    logger.info(f"Для разделения получен файл {file.name}")
+
     start, stop = parse_first_and_last(data)
     new_dir: pathlib.Path = create_dir(split_dir, start, stop)
+    logger.info(f"Файлы будут сохранены в директорию {new_dir}")
+
     for i, chunk in enumerate(chunked(data, f_size), start=1):
         first, last = parse_first_and_last(chunk)
         ch_path: pathlib.Path = file_path(new_dir, first, last)
         write_json(ch_path, chunk)
-        click.secho(f"Записываю в файл {ch_path}", fg="green")
+        logger.success(f"Сохранен файл {ch_path.name}")
 
 
 @molecad.command(
-    help="Из указанной директории загружает файлы в коллекцию MongoDB. Количество документов в "
-    "файле не должно превышать 100000, иначе данный файл будет пропущен при загрузке. При "
-    'указании опции "--drop" удаляет все коллекции в базе, после чего создает их заново и '
-    'устанавливает уникальный индекс "CID" и индекс "index" на коллекциях "properties" и '
-    '"molecules". '
+    help="Файлы из указанной директории содержат данные скачанные из Pubchem. Количество "
+    "документов в файле не должно превышать 100000, иначе данный файл будет пропущен при загрузке. "
+    "В ходе работы программы для каждого загружаемого в коллекцию `properties` документа "
+    "генерируется схема молекулы в коллекции `molecules`, после чего обе коллекции "
+    "подготавливаются для подструкрного поиска. При указании опции `--drop` все коллекции будут "
+    "удалены и созданы заново, после чего на них будет установлен уникальный индекс `CID` и "
+    "индекс `index`."
 )
 @click.option(
     "--f-dir",
@@ -144,48 +159,52 @@ def split(obj: Settings, file: pathlib.Path, f_size: int) -> None:
 @click.pass_obj
 @timer
 def populate(obj: Settings, f_dir: pathlib.Path, drop: bool) -> None:
-    logger.success(f"Выбрана база {obj.db_name}", fg="green")
+    db = get_db(obj)
     if drop:
-        drop_db(obj)
-    properties, molecules, mfp_counts = obj.get_collections()
+        drop_db(db)
+
+    properties, molecules, mfp_counts = get_collections(db)
+    create_indexes(properties, molecules)
 
     total, succeed, failed, created = (0 for _ in range(4))
-    click.secho(f"Произвожу импорт из папки {f_dir}", fg="yellow")
+    logger.info(f"Импорт будет производится директории {f_dir.name} в базу {db.name}")
     for file in f_dir.glob("./**/*.json"):
+        logger.debug(f"Импортирую файл {file.name}")
         try:
-            click.secho(f"Импортирую файл {file}", fg="cyan")
             data: List[Dict[str, Any]] = converter(read_json(file))
             total += len(data)
-            data, c = create_molecule(data, molecules)
-            created += c
-            s, f = upload_data(data, properties)
-            succeed += s
-            failed += f
+
+            processed, inc_created = create_molecule(data, molecules)
+            inc_succeed, inc_failed = upload_data(processed, properties)
+
+            created += inc_created
+            succeed += inc_succeed
+            failed += inc_failed
         except pymongo.errors.BulkWriteError as e:
             click.secho(e, fg="red")
             continue
         except pymongo.errors.DuplicateKeyError as e:
             click.secho(e, fg="red")
             continue
-    deleted = delete_broken(properties)
-    click.secho(
-        f"Выбрана база данных: {obj.get_db().name}\n"
+    without_smiles, without_scheme = delete_broken(properties)
+
+    logger.success(
+        f"Выбрана база данных: {db.name}\n"
         f"Коллекция представлений молекул: {molecules.name}\n"
         f"Создано схем: {created}\n"
         f"Коллекция свойств молекул: {properties.name}\n"
         f"Общее количество обработанных документов: {total}\n"
         f"Новых документов: {succeed},\n"
         f"Пропущено дубликатов: {failed},\n"
-        f"Удалено документов без SMILES: {deleted[0]},\n"
-        f"Удалено документов без схемы: {deleted[1]}",
-        fg="green",
+        f"Удалено документов без SMILES: {without_smiles},\n"
+        f"Удалено документов без схемы: {without_scheme}",
     )
 
-    click.secho("Начинаю генерировать Fingerprints", fg="yellow")
+    logger.info("Начинаю генерировать Fingerprints")
     Search.AddPatternFingerprints(molecules)
-    click.secho("Команда AddPatternFingerprints выполнена.", fg="bright_blue")
+    logger.success("Команда AddPatternFingerprints выполнена.")
     Search.AddMorganFingerprints(molecules, mfp_counts)
-    click.secho("Команда AddMorganFingerprints выполнена.", fg="bright_blue")
+    logger.success("Команда AddMorganFingerprints выполнена.")
 
 
 molecad.add_command(fetch)

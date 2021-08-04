@@ -5,24 +5,12 @@ from pydantic import NonNegativeInt, PositiveInt
 from pymongo.cursor import Cursor
 from rdkit import Chem
 
+from .db import get_collections, get_db
 from .settings import settings
 from .utils import timer
 
-db = settings.get_db()
-properties, molecules, mfp_counts = settings.get_collections()
-db_collections = properties, molecules, mfp_counts
-
-
-def run_search(smiles: str) -> List[str]:
-    """
-    Функция генерирует объект молекулы для работы rdkit, после этот объект используется для
-    подструктурного поиска по коллекции "molecules".
-    :param smiles: Строковое представление структуры молекулы.
-    :return: Список молекул, удовлетворяют результатам поиска по заданной подструктуре.
-    """
-    q_mol: Chem.Mol = Chem.MolFromSmiles(smiles)
-    search_results: List[str] = substructure.SubSearch(q_mol, molecules)
-    return search_results
+db = get_db(setup=settings)
+properties, molecules, mfp_counts = get_collections(db)
 
 
 def paging_pipeline(mol_lst: List[str], skip: int, limit: int) -> List[Dict[str, Any]]:
@@ -109,6 +97,18 @@ def summary_pipeline(mol_lst: List[str]) -> List[Dict[str, Any]]:
         }
     }
     return [match_, group_, project_]
+
+
+def run_search(smiles: str) -> List[str]:
+    """
+    Функция генерирует объект молекулы для работы rdkit, после этот объект используется для
+    подструктурного поиска по коллекции "molecules".
+    :param smiles: Строковое представление структуры молекулы.
+    :return: Список молекул, удовлетворяют результатам поиска по заданной подструктуре.
+    """
+    q_mol: Chem.Mol = Chem.MolFromSmiles(smiles)
+    search_results: List[str] = substructure.SubSearch(q_mol, molecules)
+    return search_results
 
 
 @timer

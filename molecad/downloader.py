@@ -173,7 +173,6 @@ def execute_requests(start: int, stop: int, maxsize: int = 100) -> Iterator[Dict
     for chunk in delay_iterations(chunks):
         try:
             url = url_builder(chunk, **d)
-            logger.debug("Делаю запрос по URL: {}", url)
             res = request_data_json(url)
         except requests.exceptions.HTTPError:
             logger.opt(exception=True).error("Ошибка при выполнении запроса:")

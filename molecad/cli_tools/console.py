@@ -8,18 +8,16 @@ import rdkit.RDLogger
 from loguru import logger
 from mongordkit import Search
 
-from .db import (
+from molecad.cli_tools.db import (
     create_indexes,
     create_molecule,
     delete_broken,
     drop_db,
-    get_collections,
-    get_db,
     upload_data,
 )
-from .downloader import execute_requests
-from .settings import Settings, settings
-from .utils import (
+from molecad.cli_tools.downloader import execute_requests
+from molecad.settings import Settings, settings
+from molecad.utils import (
     chunked,
     converter,
     create_dir,
@@ -159,12 +157,11 @@ def split(obj: Settings, file: pathlib.Path, f_size: int) -> None:
 @click.pass_obj
 @timer
 def populate(obj: Settings, f_dir: pathlib.Path, drop: bool) -> None:
-    db = get_db(obj)
+    db = obj.get_db()
     if drop:
         drop_db(db)
 
-    properties, molecules, mfp_counts = get_collections(db)
-    create_indexes(properties, molecules)
+    create_indexes(db[obj.properties], db[obj.molecules])
 
     total, succeed, failed, created = (0 for _ in range(4))
     logger.info(f"Импорт будет производится директории {f_dir.name} в базу {db.name}")
@@ -174,8 +171,8 @@ def populate(obj: Settings, f_dir: pathlib.Path, drop: bool) -> None:
             data: List[Dict[str, Any]] = converter(read_json(file))
             total += len(data)
 
-            processed, inc_created = create_molecule(data, molecules)
-            inc_succeed, inc_failed = upload_data(processed, properties)
+            processed, inc_created = create_molecule(data, db[obj.molecules])
+            inc_succeed, inc_failed = upload_data(processed, db[obj.properties])
 
             created += inc_created
             succeed += inc_succeed
@@ -186,13 +183,13 @@ def populate(obj: Settings, f_dir: pathlib.Path, drop: bool) -> None:
         except pymongo.errors.DuplicateKeyError as e:
             click.secho(e, fg="red")
             continue
-    without_smiles, without_scheme = delete_broken(properties)
+    without_smiles, without_scheme = delete_broken(db[obj.properties])
 
     logger.success(
         f"Выбрана база данных: {db.name}\n"
-        f"Коллекция представлений молекул: {molecules.name}\n"
+        f"Коллекция представлений молекул: {db[obj.molecules].name}\n"
         f"Создано схем: {created}\n"
-        f"Коллекция свойств молекул: {properties.name}\n"
+        f"Коллекция свойств молекул: {db[obj.properties].name}\n"
         f"Общее количество обработанных документов: {total}\n"
         f"Новых документов: {succeed},\n"
         f"Пропущено дубликатов: {failed},\n"
@@ -201,9 +198,9 @@ def populate(obj: Settings, f_dir: pathlib.Path, drop: bool) -> None:
     )
 
     logger.info("Начинаю генерировать Fingerprints")
-    Search.AddPatternFingerprints(molecules)
+    Search.AddPatternFingerprints(db[obj.molecules])
     logger.success("Команда AddPatternFingerprints выполнена.")
-    Search.AddMorganFingerprints(molecules, mfp_counts)
+    Search.AddMorganFingerprints(db[obj.molecules], db[obj.mfp_counts])
     logger.success("Команда AddMorganFingerprints выполнена.")
 
 

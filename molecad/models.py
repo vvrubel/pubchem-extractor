@@ -1,10 +1,6 @@
 from typing import List, Optional
 
-from fastapi import FastAPI
-from pydantic import BaseModel, NonNegativeInt, PositiveInt
-
-from .search import compound_search, compound_search_summary
-from .settings import settings
+from pydantic import BaseModel
 
 
 class Compound(BaseModel):
@@ -23,6 +19,10 @@ class Compound(BaseModel):
     Volume3D: Optional[float] = None
 
 
+class PageSearchModel(BaseModel):
+    response: List[Compound]
+
+
 class Statistics(BaseModel):
     Average: Optional[float] = None
     StandardDeviation: Optional[float] = None
@@ -39,16 +39,5 @@ class CompoundSummary(BaseModel):
     Volume3D: Statistics
 
 
-app = FastAPI(title=settings.component_name, version=settings.version)
-
-
-@app.get("/compound", response_model=List[Compound])
-def get_compounds(smiles: str, skip: NonNegativeInt, limit: PositiveInt):
-    res = compound_search(smiles, skip, limit)
-    return list(res)
-
-
-@app.get("/compound/summary", response_model=List[CompoundSummary])
-def get_compound_summary(smiles: str):
-    res = compound_search_summary(smiles)
-    return list(res)
+class SummarySearchModel(BaseModel):
+    response: List[CompoundSummary]

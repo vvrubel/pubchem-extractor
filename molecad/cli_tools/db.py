@@ -2,48 +2,25 @@ from typing import Any, Dict, List, Tuple
 
 from loguru import logger
 from mongordkit.Database import registration
-from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
 from rdkit import Chem
 
-from .errors import EmptySmilesError
-from .settings import Settings, settings
+from molecad.errors import EmptySmilesError
 
 
-def get_db(setup: Settings) -> Database:
-    """
-    Инициализирует базу данных в соответствии с настройками окружения.
-    :param setup: Объект настроек.
-    :return: Объект базы данных.
-    """
-    return MongoClient(setup.mongo_uri)[setup.db_name]
-
-
-def drop_db(database: Database) -> None:
+def drop_db(db: Database) -> None:
     """
     Если в базе данных есть коллекции, то она будет очищена, после чего коллекции будут созданы
     заново и на них будут созданы уникальные индексы "CID" и "index".
-    :param database: Объект базы данных.
+    :param db: Объект базы данных.
     :return: None.
     """
-    lst = database.list_collection_names()
+    lst = db.list_collection_names()
     if len(lst) > 0:
         for item in lst:
-            database.drop_collection(item)
+            db.drop_collection(item)
             logger.warning(f"Коллекция {item} удалена.")
-
-
-def get_collections(database: Database) -> Tuple[Collection, Collection, Collection]:
-    """
-    Инициализация всех коллекций переданной базы данных.
-    :param database: База данныхngoDB.
-    :return: Кортеж из трех коллекций.
-    """
-    properties = database[settings.properties]
-    molecules = database[settings.molecules]
-    mfp_counts = database[settings.mfp_counts]
-    return properties, molecules, mfp_counts
 
 
 def create_indexes(*args: Collection) -> None:
@@ -120,25 +97,27 @@ def create_molecule(
     return data, inserted
 
 
-def upload_data(data: List[Dict[str, Any]], collection: Collection) -> Tuple[int, int]:
+def upload_data(data: List[Dict[str, Any]], prop_collection: Collection) -> Tuple[int, int]:
     """
     Загружает данные в коллекцию.
     :param data: данные из файла, которые были получены с серверов Pubchem.
-    :param collection: Коллекция, в которую будут загружены данные.
+    :param prop_collection: Коллекция, в которую будут загружены данные.
     :return: Кортеж, где первый элемент – число загруженных документов, второй – незагруженных.
     """
-    res = collection.insert_many(data, ordered=False).inserted_ids
+    res = prop_collection.insert_many(data, ordered=False).inserted_ids
     return len(res), (len(data) - len(res))
 
 
-def delete_broken(collection: Collection) -> Tuple[int, int]:
+def delete_broken(prop_collection: Collection) -> Tuple[int, int]:
     """
     Для правильной работы базы необходимо удостовериться, что все документы в рабочей коллекции
     имеют поле "CanonicalSMILES" и сгенерированную схему. Документы не удовлетворяющие данным
     условиям удаляются из коллекции.
-    :param collection: Коллекция, в которой будет производиться операция удаления документов.
+    :param prop_collection: Коллекция, в которой будет производиться операция удаления документов.
     :return: Количество удаленных документов без SMILES и без схем.
     """
-    without_smiles = collection.delete_many({"CanonicalSMILES": {"$exists": False}}).deleted_count
-    without_schemes = collection.delete_many({"index": {"$exists": False}}).deleted_count
+    without_smiles = prop_collection.delete_many(
+        {"CanonicalSMILES": {"$exists": False}}
+    ).deleted_count
+    without_schemes = prop_collection.delete_many({"index": {"$exists": False}}).deleted_count
     return without_smiles, without_schemes

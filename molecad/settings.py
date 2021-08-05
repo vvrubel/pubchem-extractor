@@ -3,7 +3,8 @@ import sys
 from pathlib import Path
 
 from loguru import logger
-from pydantic import BaseSettings, Field, HttpUrl
+from pydantic import BaseSettings, Field
+from pymongo import MongoClient
 
 from .log import DevelopFormatter, JsonSink
 
@@ -15,10 +16,9 @@ class Settings(BaseSettings):
     split_dir: Path = Field("./data/split", env="SPLIT_DIR")
     logs_dir: Path = Field("./tmp", env="LOG_DIR")
 
-    api_url: HttpUrl = Field("http://127.0.0.1:8000", env="API_URL")
-    api_version: str = Field("", env="API_VERSION")
-    app_url: HttpUrl = Field("http://127.0.0.1:8050", env="APP_URL")
-    app_version: str = Field("", env="APP_VERSION")
+    app_host: str = Field("127.0.0.1", env="API_HOST")
+    app_port: int = Field(8000, env="API_PORT")
+    app_version: str = Field("", env="API_VERSION")
 
     mongo_host: str = Field("127.0.0.1", env="MONGO_HOST")
     mongo_port: int = Field(27017, env="MONGO_PORT")
@@ -50,6 +50,9 @@ class Settings(BaseSettings):
             f"{self.mongo_port}/{self.mongo_auth_source}"
         )
 
+    def get_db(self):
+        return MongoClient(self.mongo_uri)[self.db_name]
+
     def setup_logging(self):
         class InterceptHandler(logging.Handler):
             def emit(self, record):
@@ -80,11 +83,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-
-#
-# def setup_routing(app: FastAPI):
-#     from .routes import route
-#     from .webhooks import webhooks_route
-#
-#     app.include_router(route, prefix=setup.api_version + "/api")
-#     app.include_router(webhooks_route, prefix=setup.api_version + "/webhooks")

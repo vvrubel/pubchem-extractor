@@ -1,7 +1,13 @@
 import pytest
 
-from molecad.downloader import chunked, generate_ids, request_data_json
-from molecad.downloader_types import Domain, NamespCmpd, Operation, OperationComplex, PropertyTags
+from molecad.cli_tools.downloader import chunked, generate_ids, request_data_json
+from molecad.cli_tools.downloader_types import (
+    Domain,
+    NamespCmpd,
+    Operation,
+    OperationComplex,
+    PropertyTags,
+)
 from molecad.utils import concat, url_encoder
 from molecad.validator import check_tags, is_complex_operation, is_simple_operation
 

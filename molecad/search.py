@@ -5,12 +5,10 @@ from pydantic import NonNegativeInt, PositiveInt
 from pymongo.cursor import Cursor
 from rdkit import Chem
 
-from .db import get_collections, get_db
 from .settings import settings
 from .utils import timer
 
-db = get_db(setup=settings)
-properties, molecules, mfp_counts = get_collections(db)
+db = settings.get_db()
 
 
 def paging_pipeline(mol_lst: List[str], skip: int, limit: int) -> List[Dict[str, Any]]:
@@ -41,6 +39,7 @@ def summary_pipeline(mol_lst: List[str]) -> List[Dict[str, Any]]:
     group_ = {
         "$group": {
             "_id": 0,
+            "n_comp": {"$sum": 1},
             "AvgMolW": {"$avg": "$MolecularWeight"},
             "StdMolW": {"$stdDevPop": "$MolecularWeight"},
             "AvgLogP": {"$avg": "$XLogP"},
@@ -99,7 +98,7 @@ def summary_pipeline(mol_lst: List[str]) -> List[Dict[str, Any]]:
     return [match_, group_, project_]
 
 
-def run_search(smiles: str) -> List[str]:
+def search_substructures(smiles: str) -> List[str]:
     """
     Функция генерирует объект молекулы для работы rdkit, после этот объект используется для
     подструктурного поиска по коллекции "molecules".
@@ -107,21 +106,21 @@ def run_search(smiles: str) -> List[str]:
     :return: Список молекул, удовлетворяют результатам поиска по заданной подструктуре.
     """
     q_mol: Chem.Mol = Chem.MolFromSmiles(smiles)
-    search_results: List[str] = substructure.SubSearch(q_mol, molecules)
+    search_results: List[str] = substructure.SubSearch(q_mol, db[settings.molecules])
     return search_results
 
 
 @timer
-def compound_search(smiles: str, skip: NonNegativeInt, limit: PositiveInt) -> Cursor:
-    result = run_search(smiles)
-    pipeline = paging_pipeline(result, skip, limit)
-    cursor = properties.aggregate(pipeline)
+def run_compound_search(smiles: str, skip: NonNegativeInt, limit: PositiveInt) -> List[Cursor]:
+    mol_lst = search_substructures(smiles)
+    pipeline = paging_pipeline(mol_lst, skip, limit)
+    cursor = db[settings.properties].aggregate(pipeline)
     return cursor
 
 
 @timer
 def compound_search_summary(smiles: str) -> Cursor:
-    result = run_search(smiles)
-    pipeline = summary_pipeline(result)
-    cursor = properties.aggregate(pipeline)
+    mol_lst = search_substructures(smiles)
+    pipeline = summary_pipeline(mol_lst)
+    cursor = db[settings.properties].aggregate(pipeline)
     return cursor

@@ -1,6 +1,6 @@
 from typing import Optional, Sequence
 
-from molecad.console.url_parts import (
+from molecad.cli_tools.url_parts import (
     Domain,
     NamespCmpd,
     Operation,

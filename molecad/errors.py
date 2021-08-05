@@ -1,11 +1,27 @@
 from loguru import logger
 
 
+class BadDomainError(Exception):
+    pass
+
+
+class BadNamespaceError(Exception):
+    pass
+
+
+class BadOperationError(Exception):
+    pass
+
+
+class EmptySmilesError(Exception):
+    pass
+
+
 class BaseAppException(Exception):
     def __init__(self, message: str = "") -> None:
         super().__init__(message)
         self.message = message
-        logger.trace("Exception '{}' was raised. {}.", self.__class__.__name__, self.message)
+        logger.warning("Exception '{}' was raised. {}.", self.__class__.__name__, self.message)
 
     @property
     def error_code(self) -> int:

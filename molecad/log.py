@@ -50,10 +50,10 @@ class DevelopFormatter(LoguruContainer):
         extra = " ".join(f"<lvl>{k}={str(v)}</>" for k, v in record["extra"].items())
 
         return (
-            "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</> "
+            "<white>{time:YYYY-MM-DD HH:mm:ss.SSS}</> "
             "| <lvl>{level: <8}</> | "
-            f"<cyan>{self.component_name}</> "
-            "<cyan>{name}</>:<cyan>{function}</>:<cyan>{line}</> "
+            f"<magenta>{self.component_name}</> "
+            "<cyan>{name}</>:<green>{function}</>:<blue>{line}</> "
             "- <lvl>{message}</> - "
             + extra
             + ("\n{exception}\n" if record.get("exception") is not None else "\n")

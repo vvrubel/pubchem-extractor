@@ -8,41 +8,24 @@ license = "free"
 [tool.poetry.dependencies]
 python = "^3.7.10"
 requests = "^2.25.1"
+types-requests = "^2.25.2"
 pathlib = "^1.0.1"
 mongordkit = { git = "git@github.com:rdkit/mongo-rdkit.git" }
 rdkit-pypi = "^2021.3.3"
-pymongo = "^3.10.1"
-motor = "^2.1"
-mongomock = "^3.19.0"
 click = "^8.0.1"
 click-pathlib = "^2020.3.13"
 click-completion = "^0.5.2"
 loguru = "^0.5.3"
 importlib = "^1.0.4"
-importlib-metadata = "^1.6.1"
-python-dotenv = "^0.18.0"
 pydantic = {extras = ["dotenv"], version = "^1.8.2"}
-fastapi = "^0.65.2"
-starlette = "^0.14.2"
-starlette-context = "^0.3.3"
+fastapi = "^0.68.0"
 uvicorn = "^0.14.0"
-pandas = "^1.2.5"
-numpy = "^1.21.0"
-matplotlib = "^3.4.2"
-statistics = "^1.0.3"
-jupyter = "^1.0.0"
-dash = "^1.21.0"
-plotly = "^5.1.0"
-dash_marvinjs = "^0.1.1"
-CGRtools = "^4.1.30"
-httpx = "^0.18.2"
+
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.4.3"
 black = "^21.6b0"
 flake8 = "^3.9.2"
 mypy = "^0.910"
-isort = "^5.9.1"
 
 [tool.black]
 line-length = 100

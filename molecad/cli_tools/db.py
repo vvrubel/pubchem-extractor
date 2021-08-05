@@ -1,30 +1,26 @@
 from typing import Any, Dict, List, Tuple
 
-import click
 from loguru import logger
 from mongordkit.Database import registration
-from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
 from rdkit import Chem
 
-
-def connect_mongodb(uri: str) -> MongoClient:
-    return MongoClient(uri)
+from molecad.errors import EmptySmilesError
 
 
 def drop_db(db: Database) -> None:
     """
     Если в базе данных есть коллекции, то она будет очищена, после чего коллекции будут созданы
     заново и на них будут созданы уникальные индексы "CID" и "index".
-    :param db: Экземпляр базы данных MongoDB.
+    :param db: Объект базы данных.
     :return: None.
     """
     lst = db.list_collection_names()
     if len(lst) > 0:
         for item in lst:
             db.drop_collection(item)
-            logger.success(f"Коллекция {item} удалена.")
+            logger.warning(f"Коллекция {item} удалена.")
 
 
 def create_indexes(*args: Collection) -> None:
@@ -35,9 +31,9 @@ def create_indexes(*args: Collection) -> None:
     """
     for arg in args:
         arg.create_index("CID", unique=True)
-        click.secho(f'На коллекции {arg.name} создан уникальный индекс "CID".', fg="green")
+        logger.info(f'На коллекции {arg.name} создан уникальный индекс "CID".')
         arg.create_index("index")
-        click.secho(f'На коллекции {arg.name} создан индекс – "index".', fg="green")
+        logger.info(f'На коллекции {arg.name} создан индекс – "index".')
 
 
 def register_from_smiles(smiles: str) -> Dict[str, Any]:
@@ -47,6 +43,8 @@ def register_from_smiles(smiles: str) -> Dict[str, Any]:
     :return: Словарь–репрезентация молекулы, сгенерированный из SMILES, который будет загружен в
     MongoDB в качестве документа в коллекцию "molecules".
     """
+    if smiles is None:
+        raise EmptySmilesError
     rdmol = Chem.MolFromSmiles(smiles)
     if rdmol is None:
         raise TypeError
@@ -70,52 +68,56 @@ def create_molecule(
     представлением молекул.
     :return: Кортеж из измененной ``data`` и количества сгенерированных схем.
     """
-    n = 0
+    inserted = 0
     for molprop in data:
         if "CanonicalSMILES" not in molprop:
             continue
+
         smiles = molprop["CanonicalSMILES"]
         cid = molprop["CID"]
+
         try:
             scheme = register_from_smiles(smiles)
-        except TypeError:
-            # if scheme is None
+        except (TypeError, EmptySmilesError):
             continue
-
-        scheme["CID"] = cid
+        else:
+            # добавляем в схему поле "CID"
+            scheme["CID"] = cid
 
         mol_collection.insert_one(scheme)
-        n += 1
-        # из схемы берем поле "index" и добавляем его к данным в словаре
+        inserted += 1
+        # к исходным данным добавляем поле "index" из схемы
         molprop["index"] = scheme["index"]
 
-        # приводим значение ключа "MolecularWeight" к float
+        # приводим значение "MolecularWeight" к float
         mol_weight = molprop["MolecularWeight"]
         if mol_weight is not None:
             molprop["MolecularWeight"] = float(mol_weight)
 
-    return data, n
+    return data, inserted
 
 
-def upload_data(data: List[Dict[str, Any]], collection: Collection) -> Tuple[int, int]:
+def upload_data(data: List[Dict[str, Any]], prop_collection: Collection) -> Tuple[int, int]:
     """
     Загружает данные в коллекцию.
     :param data: данные из файла, которые были получены с серверов Pubchem.
-    :param collection: Коллекция, в которую будут загружены данные.
+    :param prop_collection: Коллекция, в которую будут загружены данные.
     :return: Кортеж, где первый элемент – число загруженных документов, второй – незагруженных.
     """
-    res = collection.insert_many(data, ordered=False).inserted_ids
+    res = prop_collection.insert_many(data, ordered=False).inserted_ids
     return len(res), (len(data) - len(res))
 
 
-def delete_broken(collection: Collection) -> Tuple[int, int]:
+def delete_broken(prop_collection: Collection) -> Tuple[int, int]:
     """
     Для правильной работы базы необходимо удостовериться, что все документы в рабочей коллекции
     имеют поле "CanonicalSMILES" и сгенерированную схему. Документы не удовлетворяющие данным
     условиям удаляются из коллекции.
-    :param collection: Коллекция, в которой будет производиться операция удаления документов.
+    :param prop_collection: Коллекция, в которой будет производиться операция удаления документов.
     :return: Количество удаленных документов без SMILES и без схем.
     """
-    without_smiles = collection.delete_many({"CanonicalSMILES": {"$exists": False}}).deleted_count
-    without_schemes = collection.delete_many({"index": {"$exists": False}}).deleted_count
+    without_smiles = prop_collection.delete_many(
+        {"CanonicalSMILES": {"$exists": False}}
+    ).deleted_count
+    without_schemes = prop_collection.delete_many({"index": {"$exists": False}}).deleted_count
     return without_smiles, without_schemes

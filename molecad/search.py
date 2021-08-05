@@ -1,27 +1,16 @@
 from typing import Any, Dict, List
 
-from mongordkit.Search import similarity, substructure
+from loguru import logger
+from mongordkit.Search import substructure
 from pydantic import NonNegativeInt, PositiveInt
-from pymongo import MongoClient
 from pymongo.cursor import Cursor
 from rdkit import Chem
-from rdkit.Chem import AllChem
 
-from .settings import Settings
+from .errors import NoDatabaseRecordError
+from .settings import settings
 from .utils import timer
 
-# Morgan fingerprints
-DEFAULT_MORGAN_RADIUS = 2
-DEFAULT_MORGAN_LEN = 2048
-
-# PyMongo configurations
-DEFAULT_BATCH_SIZE = 100
-
-setup = Settings()
-db = MongoClient(setup.mongo_uri)[setup.db_name]
-properties = db[setup.prop_collection]
-molecules = db[setup.mol_collection]
-mfp_counts = db[setup.mfp_collection]
+db = settings.get_db()
 
 
 def paging_pipeline(mol_lst: List[str], skip: int, limit: int) -> List[Dict[str, Any]]:
@@ -52,6 +41,7 @@ def summary_pipeline(mol_lst: List[str]) -> List[Dict[str, Any]]:
     group_ = {
         "$group": {
             "_id": 0,
+            "n_compounds": {"$sum": 1},
             "AvgMolW": {"$avg": "$MolecularWeight"},
             "StdMolW": {"$stdDevPop": "$MolecularWeight"},
             "AvgLogP": {"$avg": "$XLogP"},
@@ -110,7 +100,7 @@ def summary_pipeline(mol_lst: List[str]) -> List[Dict[str, Any]]:
     return [match_, group_, project_]
 
 
-def run_search(smiles: str):
+def search_substructures(smiles: str) -> List[str]:
     """
     Функция генерирует объект молекулы для работы rdkit, после этот объект используется для
     подструктурного поиска по коллекции "molecules".
@@ -118,39 +108,30 @@ def run_search(smiles: str):
     :return: Список молекул, удовлетворяют результатам поиска по заданной подструктуре.
     """
     q_mol: Chem.Mol = Chem.MolFromSmiles(smiles)
-    qfp = list(
-        AllChem.GetMorganFingerprintAsBitVect(
-            q_mol, DEFAULT_MORGAN_RADIUS, nBits=DEFAULT_MORGAN_LEN
-        ).GetOnBits()
-    )
-    substructures: List[str] = substructure.SubSearch(q_mol, molecules)
+    search_results: List[str] = substructure.SubSearch(q_mol, db[settings.molecules])
 
-    results = {}
-    for doc in molecules.find({"index": {"$in": substructures}}):
-        smi = doc["smiles"]
-        tanimoto = similarity.calc_tanimoto(qfp, doc["fingerprints"]["morgan_fp"]["bits"])
-        results[smi] = tanimoto
-
-    return results
+    if len(search_results) == 0:
+        raise NoDatabaseRecordError
+    else:
+        logger.success(f"Found {len(search_results)} compounds for requested pattern.")
+        return search_results
 
 
 @timer
-def compound_search(smiles: str, skip: NonNegativeInt, limit: PositiveInt) -> Cursor:
-    q_mol: Chem.Mol = Chem.MolFromSmiles(smiles)
-    substructures = run_search(q_mol)
-
-    pipeline = paging_pipeline(substructures, skip, limit)
-    cursor = properties.aggregate(pipeline)
-    return cursor
+def run_page_search(smiles: str, skip: NonNegativeInt, limit: PositiveInt) -> List[Cursor]:
+    logger.info(f"Searching molecules for the substructure: {smiles}")
+    mol_lst = search_substructures(smiles)
+    logger.info(f"Applying the pagination parameters: skip – {skip}, limit – {limit}")
+    pipeline = paging_pipeline(mol_lst, skip, limit)
+    cursor = db[settings.properties].aggregate(pipeline)
+    return list(cursor)
 
 
 @timer
-def compound_search_summary(smiles: str) -> Cursor:
-    substructures = run_search(smiles)
-    pipeline = summary_pipeline(substructures)
-    cursor = properties.aggregate(pipeline)
-    return cursor
-
-
-if __name__ == "__main__":
-    run_search("S(=O)(=O)NC(=O)N")
+def run_summary_search(smiles: str) -> List[Cursor]:
+    logger.info(f"Searching molecules for substructure: {smiles}")
+    mol_lst = search_substructures(smiles)
+    logger.info("Calculating the statistics for searched molecules.")
+    pipeline = summary_pipeline(mol_lst)
+    cursor = db[settings.properties].aggregate(pipeline)
+    return list(cursor)

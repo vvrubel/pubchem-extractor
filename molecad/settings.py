@@ -3,21 +3,22 @@ import sys
 from pathlib import Path
 
 from loguru import logger
-from pydantic import BaseSettings, Field, HttpUrl
+from pydantic import BaseSettings, Field
+from pymongo import MongoClient
 
 from .log import DevelopFormatter, JsonSink
 
 
 class Settings(BaseSettings):
-    env: str = Field("PROD", env="ENV")
+    env: str = Field("dev", env="ENV")
     project_dir: Path = Field(".", env="PROJ_DIR")
     fetch_dir: Path = Field("./data/fetch", env="FETCH_DIR")
     split_dir: Path = Field("./data/split", env="SPLIT_DIR")
-    log_cli: Path = Field("./tmp/timer.log", env="LOG_CLI")
+    logs_dir: Path = Field("./tmp", env="LOG_DIR")
 
-    api_url: HttpUrl = Field("http://127.0.0.1:8000", env="API_URL")
-    api_version: str = Field("", env="API_VERSION")
-    app_url: HttpUrl = Field("http://127.0.0.1:8050", env="APP_URL")
+    app_host: str = Field("127.0.0.1", env="API_HOST")
+    app_port: int = Field(8000, env="API_PORT")
+    app_version: str = Field("", env="API_VERSION")
 
     mongo_host: str = Field("127.0.0.1", env="MONGO_HOST")
     mongo_port: int = Field(27017, env="MONGO_PORT")
@@ -26,9 +27,9 @@ class Settings(BaseSettings):
     mongo_auth_source: str = Field("admin", env="MONGO_AUTH_SOURCE")
 
     db_name: str = Field("", env="MONGO_DB_NAME")
-    prop_collection: str = Field("properties", env="MONGO_PROPERTIES_COLLECTION")
-    mol_collection: str = Field("molecules", env="MONGO_MOLECULES_COLLECTION")
-    mfp_collection: str = Field("mfp_counts", env="MONGO_MFP_COUNTS_COLLECTION")
+    properties: str = Field("properties", env="MONGO_PROPERTIES_COLLECTION")
+    molecules: str = Field("molecules", env="MONGO_MOLECULES_COLLECTION")
+    mfp_counts: str = Field("mfp_counts", env="MONGO_MFP_COUNTS_COLLECTION")
 
     component_name: str = "molecad"
 
@@ -37,11 +38,20 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
 
     @property
+    def version(self):
+        import importlib_metadata
+
+        return importlib_metadata.version("molecad")
+
+    @property
     def mongo_uri(self):
         return (
             f"mongodb://{self.mongo_user}:{self.mongo_password}@{self.mongo_host}:"
             f"{self.mongo_port}/{self.mongo_auth_source}"
         )
+
+    def get_db(self):
+        return MongoClient(self.mongo_uri)[self.db_name]
 
     def setup_logging(self):
         class InterceptHandler(logging.Handler):
@@ -62,7 +72,7 @@ class Settings(BaseSettings):
 
         logging.getLogger().handlers = [InterceptHandler()]
         logger.remove()
-        if self.env == "DEV":
+        if self.env == "dev":
             develop_fmt = DevelopFormatter(self.component_name)
             logger.add(sys.stdout, format=develop_fmt, level="DEBUG", backtrace=True, diagnose=True)
         else:
@@ -70,3 +80,6 @@ class Settings(BaseSettings):
             logger.add(json_sink)
 
         logging.getLogger("uvicorn.access").handlers = [InterceptHandler()]
+
+
+settings = Settings()

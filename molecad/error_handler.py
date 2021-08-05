@@ -4,11 +4,11 @@ from starlette.responses import JSONResponse
 from .errors import BaseAppException
 
 
-def app_error_handler(request, e: BaseAppException):  # noqa: F405
+def app_error_handler(e: BaseAppException):  # noqa: F405
     return JSONResponse(content=e.to_dict(), status_code=e.error_code)
 
 
-def exception(request, e: Exception):
+def exception(e: Exception):
     logger.exception("Unexpected error occurred. {}", e)
     return JSONResponse(
         content={

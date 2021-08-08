@@ -52,7 +52,7 @@ def parse_first_and_last(obj: List[Dict[str, Any]]) -> Tuple[int, int]:
     return first, last
 
 
-def check_dir(parent_dir: Path, first_id: int, last_id: int) -> Path:
+def create_dir(parent_dir: Path, first_id: int, last_id: int) -> Path:
     name = concat(first_id, last_id, sep="–")
     inc = 1
     new_dir = Path(parent_dir).resolve() / name

@@ -10,9 +10,5 @@ class BadOperationError(Exception):
     pass
 
 
-class DirExistsError(FileExistsError):
-    pass
-
-
 class EmptySmilesError(Exception):
     pass

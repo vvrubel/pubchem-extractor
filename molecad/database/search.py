@@ -1,39 +1,20 @@
 from typing import Any, Dict, List
 
+from loguru import logger
 from mongordkit.Search import substructure
 from pydantic import NonNegativeInt, PositiveInt
+from pymongo import MongoClient
 from pymongo.cursor import Cursor
 from rdkit import Chem
 
-from molecad.cli.utils import timer
+from molecad.errors import NoDatabaseRecordError
 from molecad.settings import settings
+from molecad.utils import timer
 
-db = settings.get_db()
-properties, molecules, mfp_counts = settings.get_collections()
-db_collections = properties, molecules, mfp_counts
-
-
-def run_search(smiles: str) -> List[str]:
-    """
-    Функция генерирует объект молекулы для работы rdkit, после этот объект используется для
-    подструктурного поиска по коллекции "molecules".
-    :param smiles: Строковое представление структуры молекулы.
-    :return: Список молекул, удовлетворяют результатам поиска по заданной подструктуре.
-    """
-    q_mol: Chem.Mol = Chem.MolFromSmiles(smiles)
-    search_results: List[str] = substructure.SubSearch(q_mol, molecules)
-    return search_results
+db = MongoClient(settings.mongo_uri)[settings.db_name]
 
 
 def paging_pipeline(mol_lst: List[str], skip: int, limit: int) -> List[Dict[str, Any]]:
-    """
-    Функция принимает на вход список отфильтрованных молекул и параметры пагинации,
-    подставляет эти значения в стадии пайплана и возвращает их список из функции.
-    :param mol_lst: Список молекул из функции ``run_search``.
-    :param skip: Число записей, которые нужно пропустить.
-    :param limit: Число записей, которые нужно показать.
-    :return: Список стадий.
-    """
     match_ = {"$match": {"index": {"$in": mol_lst}}}
     project_ = {"$project": {"_id": 0, "index": 0}}
     skip_ = {"$skip": skip}
@@ -42,13 +23,6 @@ def paging_pipeline(mol_lst: List[str], skip: int, limit: int) -> List[Dict[str,
 
 
 def summary_pipeline(mol_lst: List[str]) -> List[Dict[str, Any]]:
-    """
-    Функция принимает на вход список отфильтрованных молекул и строит пайплайн, в котором
-    оставляет документы со smiles из входящего списка, затем группирует все
-    документы и рассчитывает статистические параметры для числовых полей.
-    :param mol_lst: Список молекул из функции ``run_search``.
-    :return: Список стадий.
-    """
     match_ = {"$match": {"index": {"$in": mol_lst}}}
     group_ = {
         "$group": {
@@ -111,17 +85,28 @@ def summary_pipeline(mol_lst: List[str]) -> List[Dict[str, Any]]:
     return [match_, group_, project_]
 
 
+def run_search(smiles: str) -> List[str]:
+    q_mol: Chem.Mol = Chem.MolFromSmiles(smiles)
+    search_results: List[str] = substructure.SubSearch(q_mol, db[settings.molecules])
+
+    if len(search_results) == 0:
+        raise NoDatabaseRecordError
+    else:
+        logger.success(f"Found {len(search_results)} compounds for requested pattern.")
+        return search_results
+
+
 @timer
-def compound_search(smiles: str, skip: NonNegativeInt, limit: PositiveInt) -> Cursor:
+def compound_search(smiles: str, skip: NonNegativeInt, limit: PositiveInt) -> List[Cursor]:
     result = run_search(smiles)
     pipeline = paging_pipeline(result, skip, limit)
-    cursor = properties.aggregate(pipeline)
-    return cursor
+    cursor = db[settings.properties].aggregate(pipeline)
+    return list(cursor)
 
 
 @timer
-def compound_search_summary(smiles: str) -> Cursor:
+def compound_search_summary(smiles: str) -> List[Cursor]:
     result = run_search(smiles)
     pipeline = summary_pipeline(result)
-    cursor = properties.aggregate(pipeline)
-    return cursor
+    cursor = db[settings.properties].aggregate(pipeline)
+    return list(cursor)

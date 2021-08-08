@@ -6,7 +6,7 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 from rdkit import Chem
 
-from .errors import EmptySmilesError
+from molecad.cli.errors import EmptySmilesError
 
 
 def drop_db(db: Database) -> None:
@@ -37,7 +37,7 @@ def register_from_smiles(smiles: str) -> Dict[str, Any]:
     return scheme.generate_mol_doc(rdmol)
 
 
-def create_molecule(
+def create_molecules(
     data: List[Dict[str, Any]], mol_collection: Collection
 ) -> Tuple[List[Dict[str, Any]], int]:
     inserted = 0

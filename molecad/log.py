@@ -1,8 +1,13 @@
 import json
+import logging
+import sys
 import traceback as tb
 from datetime import datetime
 
+from loguru import logger
 from starlette_context import context
+
+from .settings import settings
 
 
 class LoguruContainer:
@@ -58,3 +63,33 @@ class DevelopFormatter(LoguruContainer):
             + extra
             + ("\n{exception}\n" if record.get("exception") is not None else "\n")
         )
+
+
+class InterceptHandler(logging.Handler):
+    def emit(self, record):
+        # Get corresponding Loguru level if it exists
+        try:
+            level = logger.level(record.levelname).name
+        except ValueError:
+            level = record.levelno
+
+        # Find caller from where originated the logged message
+        frame, depth = logging.currentframe(), 2
+        while frame.f_code.co_filename == logging.__file__:
+            frame = frame.f_back
+            depth += 1
+
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+
+
+def setup_logging():
+    logging.getLogger().handlers = [InterceptHandler()]
+    logger.remove()
+    if settings.env == "dev":
+        develop_fmt = DevelopFormatter(settings.component_name)
+        logger.add(sys.stdout, format=develop_fmt, level="DEBUG", backtrace=True, diagnose=True)
+    else:
+        json_sink = JsonSink(settings.component_name)
+        logger.add(json_sink)
+
+    logging.getLogger("uvicorn.access").handlers = [InterceptHandler()]

@@ -1,12 +1,6 @@
-import logging
-import sys
 from pathlib import Path
 
-from loguru import logger
 from pydantic import BaseSettings, Field
-from pymongo import MongoClient
-
-from .log import DevelopFormatter, JsonSink
 
 
 class Settings(BaseSettings):
@@ -38,48 +32,11 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
 
     @property
-    def version(self):
-        import importlib_metadata
-
-        return importlib_metadata.version("molecad")
-
-    @property
     def mongo_uri(self):
         return (
             f"mongodb://{self.mongo_user}:{self.mongo_password}@{self.mongo_host}:"
             f"{self.mongo_port}/{self.mongo_auth_source}"
         )
-
-    def get_db(self):
-        return MongoClient(self.mongo_uri)[self.db_name]
-
-    def setup_logging(self):
-        class InterceptHandler(logging.Handler):
-            def emit(self, record):
-                # Get corresponding Loguru level if it exists
-                try:
-                    level = logger.level(record.levelname).name
-                except ValueError:
-                    level = record.levelno
-
-                # Find caller from where originated the logged message
-                frame, depth = logging.currentframe(), 2
-                while frame.f_code.co_filename == logging.__file__:
-                    frame = frame.f_back
-                    depth += 1
-
-                logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
-
-        logging.getLogger().handlers = [InterceptHandler()]
-        logger.remove()
-        if self.env == "dev":
-            develop_fmt = DevelopFormatter(self.component_name)
-            logger.add(sys.stdout, format=develop_fmt, level="DEBUG", backtrace=True, diagnose=True)
-        else:
-            json_sink = JsonSink(self.component_name)
-            logger.add(json_sink)
-
-        logging.getLogger("uvicorn.access").handlers = [InterceptHandler()]
 
 
 settings = Settings()

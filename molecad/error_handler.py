@@ -4,7 +4,7 @@ from starlette.responses import JSONResponse
 from .errors import BaseAppException
 
 
-def app_error_handler(e: BaseAppException):  # noqa: F405
+def app_error_handler(e: BaseAppException):
     return JSONResponse(content=e.to_dict(), status_code=e.error_code)
 
 

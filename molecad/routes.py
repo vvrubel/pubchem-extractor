@@ -12,6 +12,8 @@ from .search import run_page_search, run_summary_search
 
 router = APIRouter()
 
+# todo: add query params by models
+
 
 @router.get("/compound", response_model=PageSearchModel)
 def get_compounds(smiles: str, skip: NonNegativeInt, limit: PositiveInt):

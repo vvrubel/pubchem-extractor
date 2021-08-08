@@ -1,27 +1,18 @@
+from typing import Optional
+
 from loguru import logger
-
-
-class BadDomainError(Exception):
-    pass
-
-
-class BadNamespaceError(Exception):
-    pass
-
-
-class BadOperationError(Exception):
-    pass
-
-
-class EmptySmilesError(Exception):
-    pass
+from pydantic import BaseModel
 
 
 class BaseAppException(Exception):
-    def __init__(self, message: str = "") -> None:
+    def __init__(
+        self, error_model: BaseModel, message: str = "", error_code: Optional[int] = None
+    ) -> None:
         super().__init__(message)
+        self.error_model = error_model
         self.message = message
-        logger.warning("Exception '{}' was raised. {}.", self.__class__.__name__, self.message)
+        self.__error_code = error_code
+        logger.trace("Exception '{}' was raised. {}.", self.__class__.__name__, self.message)
 
     @property
     def error_code(self) -> int:
@@ -29,6 +20,12 @@ class BaseAppException(Exception):
 
     def to_dict(self) -> dict:
         raise NotImplementedError("`to_dict` is not implemented.")
+
+
+class InvalidParamsException(BaseAppException):
+    @property
+    def error_code(self) -> int:
+        return 400
 
 
 class NoDatabaseRecordError(BaseAppException):
@@ -66,11 +63,3 @@ class ResultUnexpectedError(BadRequestError):
 
     def __str__(self):
         return "Unexpected error, when trying to get result"
-
-
-class UnknownPipelineError(BadRequestError):
-    def to_dict(self) -> dict:
-        return {"error": "pipeline.unknown", "message": str(self)}
-
-    def __str__(self) -> str:
-        return "Pipeline is unknown or unimplemented, can't run the task"

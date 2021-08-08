@@ -8,8 +8,8 @@ from molecad.cli_tools.url_parts import (
     OperationComplex,
     PropertyTags,
 )
+from molecad.cli_tools.validator import check_tags, is_complex_operation, is_simple_operation
 from molecad.utils import concat, url_encoder
-from molecad.validator import check_tags, is_complex_operation, is_simple_operation
 
 EXAMPLE1 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244/property/MolecularFormula,InChIKey/JSON"
 

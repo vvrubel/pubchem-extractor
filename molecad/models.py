@@ -3,18 +3,14 @@ from typing import List, Optional
 from pydantic import BaseModel, NonNegativeInt, PositiveInt
 
 
-class Smiles(BaseModel):
+class PageInput(BaseModel):
     smiles: str
+    skip: NonNegativeInt
+    limit: PositiveInt
 
 
-class PagingParams(BaseModel):
-    skip: NonNegativeInt = 0
-    limit: PositiveInt = 1
-
-
-class SearchParams(BaseModel):
+class SummaryInput(BaseModel):
     smiles: str
-    params: Optional[PagingParams]
 
 
 class Compound(BaseModel):

@@ -3,6 +3,8 @@ from typing import Any, Dict, List
 from loguru import logger
 from mongordkit.Search import substructure
 from pydantic import NonNegativeInt, PositiveInt
+
+# TODO: change to motor
 from pymongo.cursor import Cursor
 from rdkit import Chem
 
@@ -10,18 +12,11 @@ from .errors import NoDatabaseRecordError
 from .settings import settings
 from .utils import timer
 
-db = settings.get_db()
+# TODO: startup on event
+db = settings.mongo_client_sync()
 
 
 def paging_pipeline(mol_lst: List[str], skip: int, limit: int) -> List[Dict[str, Any]]:
-    """
-    Функция принимает на вход список отфильтрованных молекул и параметры пагинации,
-    подставляет эти значения в стадии пайплана и возвращает их список из функции.
-    :param mol_lst: Список молекул из функции ``run_search``.
-    :param skip: Число записей, которые нужно пропустить.
-    :param limit: Число записей, которые нужно показать.
-    :return: Список стадий.
-    """
     match_ = {"$match": {"index": {"$in": mol_lst}}}
     project_ = {"$project": {"_id": 0, "index": 0}}
     skip_ = {"$skip": skip}
@@ -30,18 +25,11 @@ def paging_pipeline(mol_lst: List[str], skip: int, limit: int) -> List[Dict[str,
 
 
 def summary_pipeline(mol_lst: List[str]) -> List[Dict[str, Any]]:
-    """
-    Функция принимает на вход список отфильтрованных молекул и строит пайплайн, в котором
-    оставляет документы со smiles из входящего списка, затем группирует все
-    документы и рассчитывает статистические параметры для числовых полей.
-    :param mol_lst: Список молекул из функции ``run_search``.
-    :return: Список стадий.
-    """
     match_ = {"$match": {"index": {"$in": mol_lst}}}
     group_ = {
         "$group": {
             "_id": 0,
-            "n_compounds": {"$sum": 1},
+            "Found": {"$sum": 1},
             "AvgMolW": {"$avg": "$MolecularWeight"},
             "StdMolW": {"$stdDevPop": "$MolecularWeight"},
             "AvgLogP": {"$avg": "$XLogP"},
@@ -63,6 +51,7 @@ def summary_pipeline(mol_lst: List[str]) -> List[Dict[str, Any]]:
     project_ = {
         "$project": {
             "_id": 0,
+            "Found": 1,
             "MolecularWeight": {
                 "Average": {"$round": ["$AvgMolW", 2]},
                 "StandardDeviation": {"$round": ["$StdMolW", 2]},
@@ -101,12 +90,6 @@ def summary_pipeline(mol_lst: List[str]) -> List[Dict[str, Any]]:
 
 
 def search_substructures(smiles: str) -> List[str]:
-    """
-    Функция генерирует объект молекулы для работы rdkit, после этот объект используется для
-    подструктурного поиска по коллекции "molecules".
-    :param smiles: Строковое представление структуры молекулы.
-    :return: Список молекул, удовлетворяют результатам поиска по заданной подструктуре.
-    """
     q_mol: Chem.Mol = Chem.MolFromSmiles(smiles)
     search_results: List[str] = substructure.SubSearch(q_mol, db[settings.molecules])
 
@@ -117,6 +100,7 @@ def search_substructures(smiles: str) -> List[str]:
         return search_results
 
 
+# TODO: sorted results
 @timer
 def run_page_search(smiles: str, skip: NonNegativeInt, limit: PositiveInt) -> List[Cursor]:
     logger.info(f"Searching molecules for the substructure: {smiles}")

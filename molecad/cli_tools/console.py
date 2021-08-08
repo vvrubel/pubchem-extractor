@@ -157,7 +157,7 @@ def split(obj: Settings, file: pathlib.Path, f_size: int) -> None:
 @click.pass_obj
 @timer
 def populate(obj: Settings, f_dir: pathlib.Path, drop: bool) -> None:
-    db = obj.get_db()
+    db = pymongo.MongoClient(obj.mongo_uri)[obj.db_name]
     if drop:
         drop_db(db)
 

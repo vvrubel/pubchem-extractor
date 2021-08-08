@@ -20,7 +20,7 @@ importlib = "^1.0.4"
 pydantic = {extras = ["dotenv"], version = "^1.8.2"}
 fastapi = "^0.68.0"
 uvicorn = "^0.14.0"
-
+# TODO: add motor and other
 
 [tool.poetry.dev-dependencies]
 black = "^21.6b0"

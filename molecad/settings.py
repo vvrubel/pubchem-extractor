@@ -1,19 +1,17 @@
 from pathlib import Path
 
-from pydantic import BaseSettings, Field, HttpUrl
-from pymongo import MongoClient
+from pydantic import BaseSettings, Field
 
 
 class Settings(BaseSettings):
-    env: str = Field("PROD", env="ENV")
+    env: str = Field("prod", env="ENV")
     project_dir: Path = Field(".", env="PROJ_DIR")
     fetch_dir: Path = Field("./data/fetch", env="FETCH_DIR")
     split_dir: Path = Field("./data/split", env="SPLIT_DIR")
 
-    api_url: HttpUrl = Field("http://127.0.0.1:8000", env="API_URL")
-    api_version: str = Field("", env="API_VERSION")
-    app_url: HttpUrl = Field("http://127.0.0.1:8050", env="APP_URL")
-    app_version: str = Field("", env="APP_VERSION")
+    app_host: str = Field("127.0.0.1", env="API_HOST")
+    app_port: int = Field(8000, env="API_PORT")
+    app_version: str = Field("", env="API_VERSION")
 
     mongo_host: str = Field("127.0.0.1", env="MONGO_HOST")
     mongo_port: int = Field(27017, env="MONGO_PORT")
@@ -31,26 +29,11 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
 
     @property
-    def version(self):
-        import importlib_metadata
-
-        return importlib_metadata.version("molecad")
-
-    def get_db(self):
-        return MongoClient(
-            host=self.mongo_host,
-            port=self.mongo_port,
-            username=self.mongo_user,
-            password=self.mongo_password,
-            authSource=self.mongo_auth_source,
-        )[self.db_name]
-
-    def get_collections(self):
-        db = self.get_db()
-        properties = db[self.properties]
-        molecules = db[self.molecules]
-        mfp_counts = db[self.mfp_counts]
-        return properties, molecules, mfp_counts
+    def mongo_uri(self):
+        return (
+            f"mongodb://{self.mongo_user}:{self.mongo_password}@{self.mongo_host}:"
+            f"{self.mongo_port}/{self.mongo_auth_source}"
+        )
 
 
 settings = Settings()

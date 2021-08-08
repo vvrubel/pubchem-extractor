@@ -14,8 +14,8 @@ from typing import (
 import requests
 from loguru import logger
 
+from molecad.cli.errors import BadDomainError, BadNamespaceError, BadOperationError
 from molecad.cli.models import Domain, NamespCmpd, OperationComplex, Out, PropertyTags
-from molecad.cli.utils import chunked, concat, generate_ids
 from molecad.cli.validator import (
     is_complex_operation,
     is_compound,
@@ -23,7 +23,7 @@ from molecad.cli.validator import (
     is_simple_namespace,
     is_simple_operation,
 )
-from molecad.errors import BadDomainError, BadNamespaceError, BadOperationError
+from molecad.utils import chunked, concat, generate_ids, parse_first_and_last
 
 IdT = TypeVar("IdT", int, str)
 T = TypeVar("T")
@@ -40,29 +40,6 @@ def url_builder(
     tags: Optional[Sequence[str]] = None,
     output: str,
 ) -> str:
-    """
-    Команда генерирует строку URL-адреса, необходимую для выполнения запроса в службу PubChem.
-    :param ids: Последовательность из значений одинакового типа, которые интерпретируются как
-    идентификаторы соединений; последовательность идентификаторов может быть получена в
-    результате выполнения функции ``chunked``.
-    :param domain: Принимает значение из класса ``Domain``. В текущей версии сервиса доступен
-    поиск только по базе данных ``Compound``, значение по умолчанию = ``Domain.COMPOUND``.
-    :param namespace_prefix: Является первой частью, описывающей пространство имен
-    поиска и может принимать значения из классов ``NamespCmpd`` и ``PrefixSearch``. Значение по
-    умолчанию = ``NamespCmpd.CID``.
-    :param namespace_suffix: Является второй частью, описывающей пространство имен
-    поиска и может принимать значения из класса ``SuffixSearch`` или None; по умолчанию = None.
-    :param operation: Является частью URL-адреса, которая описывает, какие действия необходимо
-    выполнить над запрашиваемыми идентификаторами. Может принимать значения из классов ``Operation``
-    и ``OperationComplex``. По умолчанию = ``OperationComplex.PROPERTY``.
-    :param tags: Строка содержит последовательность из тегов, принадлежащих классу
-    ``PropertyTags``; определяется только в случае если ``operation`` принадлежит к классу
-    ``OperationComplex.PROPERTY``, иначе равно None.
-    :param output: Принимает значение из класса ``Out``; по умолчанию - ``Out.JSON``.
-    :return: Если все параметры принадлежат к указанным классам, то генерируется URL-адрес, который
-    используется для запроса в базу данных Pubchem; иначе кидается соответствующая ошибка.
-    """
-
     if not is_compound(domain):
         raise BadDomainError
 
@@ -89,39 +66,15 @@ def url_builder(
 
 
 def request_data_json(url: str, **operation_options: str) -> List[Dict[str, Any]]:
-    """
-    Функция добавляет параметры к URL, если они переданы в переменную ``operation_options`` и
-    отправляет синхронный GET-запрос к серверам PUG REST баз данных Pubchem.
-    Если бы вы создавали URL-адрес вручную, пары значений из словаря ``operation_options``
-    записывались бы в конец URL-адреса после знака ``?`` в виде ``key=value``, а при наличии
-    более одной пары последние объединялись знаком ``&``.
-    :param url: Возвращается из функции ``url_builder`` и является обязательным для всех
-    запросов.
-    :param operation_options: Может быть None или словарем из строк в случае определенных
-    значений параметра ``operation`` в функции ``url_builder``.
-    :return: Ответ от сервера в формате JSON, содержимое которого является списком из словарей.
-    """
-    try:
-        response = requests.get(url, params=operation_options).json()
-        return response["PropertyTable"]["Properties"]
-    except KeyError:
-        raise
+    response = requests.get(url, params=operation_options)
+    response.raise_for_status()
+    res = response.json()
+    return res["PropertyTable"]["Properties"]
 
 
 def delay_iterations(
     iterable: Iterable[T], waiting_time: float = 60.0, maxsize: int = 400
 ) -> Iterator[T]:
-    """
-    Ограничения на запросы, совершаемые в службу PubChem PUG REST:
-    * Не больше 5 запросов в секунду.
-    * Не больше 400 запросов в минуту.
-    * Суммарное время обработки запросов, отправленных в течение минуты, не должно превышать 300
-    секунд.
-    :param iterable: Последовательности идентификаторов, полученных из функции ``chunked``.
-    :param waiting_time: 60 секунд.
-    :param maxsize: 400 запросов.
-    :return: Генерирует последовательность в соответствии с ограничениями Pubchem.
-    """
     window = []
     for i in iterable:
         yield i
@@ -136,17 +89,6 @@ def delay_iterations(
 
 
 def execute_requests(start: int, stop: int, maxsize: int = 100) -> Iterator[Dict[str, Any]]:
-    """
-    Извлекает и сохраняет информацию из базы данных Pubchem – 'Compound'; генерирует списки
-    идентификаторов равной длины, исходя из параметров в сигнатуре функции, и передает их вместе с
-    остальными параметрами, определенными внутри функции, в ``url_builder``, после чего посыпает
-    запрос по сгенерированному URL-адресу, учитывая ограничения на количество запросов к серверам
-    Pubchem.
-    :param start: Первое значение из запрашиваемых CID.
-    :param stop: Последнее значение из запрашиваемых CID.
-    :param maxsize: Максимальное число идентификаторов в одном запросе, по умолчанию равно 100.
-    :return: Генератор запросов к базе данных Pubchem - 'Compound'.
-    """
     tags = (
         PropertyTags.MOLECULAR_FORMULA,
         PropertyTags.MOLECULAR_WEIGHT,
@@ -169,26 +111,28 @@ def execute_requests(start: int, stop: int, maxsize: int = 100) -> Iterator[Dict
         "tags": tags,
         "output": Out.JSON,
     }
-
     chunks = chunked(generate_ids(start, stop), maxsize)
     for chunk in delay_iterations(chunks):
         try:
             url = url_builder(chunk, **d)
-            logger.debug("Делаю запрос по URL: {}", url)
             res = request_data_json(url)
         except requests.exceptions.HTTPError:
-            logger.error("Ошибка при выполнении запроса.", exc_info=True)
+            logger.opt(exception=True).error("Ошибка при выполнении запроса.")
             break
         except KeyError:
-            logger.error("Неверный формат ответа от сервера.")
+            logger.opt(exception=True).error("Неверный формат ответа от сервера.")
             break
         except BadDomainError:
-            logger.error("В данной версии сервиса поиск возможен только по базе данных 'Compound'")
+            logger.error("В данной версии сервиса поиск возможен только по базе данных 'Compound'.")
+            break
         except BadNamespaceError:
-            logger.error("Пространство имен поиска по базе данных 'Compound' задано некорректно")
+            logger.error("Пространство имен поиска по базе данных 'Compound' задано некорректно.")
+            break
         except BadOperationError:
-            logger.error("Ошибка при составлении операции")
+            logger.error("Ошибка при составлении операции.")
+            break
         else:
-            logger.debug("Пришел ответ: {}", res)
+            first, last = parse_first_and_last(res)
+            logger.info(f"Получены CID: {first}–{last}")
             for rec in res:
                 yield rec

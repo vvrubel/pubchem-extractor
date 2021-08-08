@@ -7,10 +7,9 @@ import pymongo.errors
 import rdkit.RDLogger
 from mongordkit import Search
 
-from .cli_db import create_molecule, delete_broken, drop_db, upload_data
-from .downloader import execute_requests
-from .settings import Settings, settings
-from .utils import (
+from molecad.cli.db import create_molecule, delete_broken, drop_db, upload_data
+from molecad.cli.downloader import execute_requests
+from molecad.cli.utils import (
     check_dir,
     chunked,
     converter,
@@ -20,6 +19,7 @@ from .utils import (
     timer,
     write_json,
 )
+from molecad.settings import Settings, settings
 
 rdkit.RDLogger.DisableLog("rdApp.*")
 

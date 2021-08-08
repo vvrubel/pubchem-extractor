@@ -1,9 +1,15 @@
 import pytest
 
-from molecad.downloader import chunked, generate_ids, request_data_json
-from molecad.downloader_types import Domain, NamespCmpd, Operation, OperationComplex, PropertyTags
-from molecad.utils import concat, url_encoder
-from molecad.validator import check_tags, is_complex_operation, is_simple_operation
+from molecad.cli.downloader import chunked, generate_ids, request_data_json
+from molecad.cli.models import (
+    Domain,
+    NamespCmpd,
+    Operation,
+    OperationComplex,
+    PropertyTags,
+)
+from molecad.cli.utils import concat, url_encoder
+from molecad.cli.validator import check_tags, is_complex_operation, is_simple_operation
 
 EXAMPLE1 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244/property/MolecularFormula,InChIKey/JSON"
 

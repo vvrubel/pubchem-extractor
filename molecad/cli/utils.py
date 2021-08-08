@@ -1,7 +1,6 @@
 import functools
 import json
 import time
-import urllib.parse
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Tuple, TypeVar, Union
 
@@ -152,16 +151,3 @@ def converter(obj: Union[Dict[int, T], List[T]]) -> List[T]:
         return list(obj.values())
     else:
         return obj
-
-
-def url_encoder(route: str, query: Dict[str, Union[str, int]]) -> str:
-    """
-    Энкодер URL-адреса для api. Нужен для того, чтобы не использовать сторонние сервисы для
-    генерирования URL.
-    :param route: Путь до ручки api, например: '/v1/compound'.
-    :param query: Параметры, передаваемые в URL-адрес в формате словаря.
-    Например: ``query = {'smiles': 'NC(=O)N', 'skip': 0, 'limit': 10}``.
-    :return: Строка URL-адреса.
-    """
-    params = urllib.parse.urlencode(query)
-    return f"http://127.0.0.1:8000{route}?{params}"

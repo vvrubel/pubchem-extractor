@@ -1,26 +1,6 @@
 from loguru import logger
 
 
-class BadDomainError(Exception):
-    pass
-
-
-class BadNamespaceError(Exception):
-    pass
-
-
-class BadOperationError(Exception):
-    pass
-
-
-class DirExistsError(FileExistsError):
-    pass
-
-
-class EmptySmilesError(Exception):
-    pass
-
-
 class BaseAppException(Exception):
     def __init__(self, message: str = "") -> None:
         super().__init__(message)

@@ -1,6 +1,6 @@
 from typing import Optional, Sequence
 
-from .downloader_types import (
+from molecad.cli.models import (
     Domain,
     NamespCmpd,
     Operation,
@@ -9,7 +9,7 @@ from .downloader_types import (
     SearchPrefix,
     SearchSuffix,
 )
-from .errors import EmptySmilesError
+from molecad.errors import EmptySmilesError
 
 
 def is_compound(domain: str) -> bool:

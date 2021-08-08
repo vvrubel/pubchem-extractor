@@ -5,7 +5,7 @@ from mongordkit.Database import registration
 from pymongo.collection import Collection
 from rdkit import Chem
 
-from .settings import Settings
+from molecad.settings import Settings
 
 
 def drop_db(setup: Settings) -> None:

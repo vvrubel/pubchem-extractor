@@ -5,8 +5,8 @@ from pydantic import NonNegativeInt, PositiveInt
 from pymongo.cursor import Cursor
 from rdkit import Chem
 
-from .settings import settings
-from .utils import timer
+from molecad.cli.utils import timer
+from molecad.settings import settings
 
 db = settings.get_db()
 properties, molecules, mfp_counts = settings.get_collections()

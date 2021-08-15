@@ -1,9 +1,15 @@
 import pytest
 
-from molecad.downloader import chunked, generate_ids, request_data_json
-from molecad.downloader_types import Domain, NamespCmpd, Operation, OperationComplex, PropertyTags
-from molecad.utils import concat, url_encoder
-from molecad.validator import check_tags, is_complex_operation, is_simple_operation
+from src.cli.downloader import chunked, generate_ids, request_data_json
+from src.cli.models.compound import (
+    Domain,
+    NamespCmpd,
+    Operation,
+    OperationComplex,
+    PropertyTags,
+)
+from src.utils import concat
+from src.cli.models.validator import check_tags, is_complex_operation, is_simple_operation
 
 EXAMPLE1 = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2244/property/MolecularFormula,InChIKey/JSON"
 
@@ -115,23 +121,3 @@ def test_request_data_json():
         }
     ]
     assert res == expectation
-
-
-@pytest.mark.parametrize(
-    "route, query, exp",
-    [
-        (
-            "/v1/compound",
-            {"smiles": "S(=O)(=O)NC(=O)N", "skip": 0, "limit": 1},
-            "http://127.0.0.1:8000/v1/compound?smiles=S%28%3DO%29%28%3DO%29NC%28%3DO%29N&skip=0&limit=1",
-        ),
-        (
-            "/v1/compound/summary",
-            {"smiles": "S(=O)(=O)NC(=O)N"},
-            "http://127.0.0.1:8000/v1/compound/summary?smiles=S%28%3DO%29%28%3DO%29NC%28%3DO%29N",
-        ),
-    ],
-)
-def test_url_encoder(route, query, exp):
-    res = url_encoder(route, query)
-    assert res == exp

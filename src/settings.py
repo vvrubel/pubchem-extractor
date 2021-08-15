@@ -9,10 +9,6 @@ class Settings(BaseSettings):
     fetch_dir: Path = Field("./data/fetch", env="FETCH_DIR")
     split_dir: Path = Field("./data/split", env="SPLIT_DIR")
 
-    app_host: str = Field("127.0.0.1", env="API_HOST")
-    app_port: int = Field(8000, env="API_PORT")
-    app_version: str = Field("", env="API_VERSION")
-
     mongo_host: str = Field("127.0.0.1", env="MONGO_HOST")
     mongo_port: int = Field(27017, env="MONGO_PORT")
     mongo_user: str = Field("", env="MONGO_USER")
@@ -20,9 +16,13 @@ class Settings(BaseSettings):
     mongo_auth_source: str = Field("admin", env="MONGO_AUTH_SOURCE")
 
     db_name: str = Field("compound", env="MONGO_DB_NAME")
-    properties: str = Field("properties", env="MONGO_PROPERTIES_COLLECTION")
-    molecules: str = Field("molecules", env="MONGO_MOLECULES_COLLECTION")
-    mfp_counts: str = Field("mfp_counts", env="MONGO_MFP_COUNTS_COLLECTION")
+    prop_collection: str = Field("properties", env="MONGO_PROPERTIES_COLLECTION")
+    mol_collection: str = Field("molecules", env="MONGO_MOLECULES_COLLECTION")
+    mfp_collection: str = Field("mfp_counts", env="MONGO_MFP_COUNTS_COLLECTION")
+
+    api_host: str = Field("127.0.0.1", env="API_HOST")
+    api_port: int = Field(8000, env="API_PORT")
+    api_version: str = Field("", env="API_VERSION")
 
     component_name: str = "molecad"
 

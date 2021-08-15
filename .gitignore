@@ -1,7 +1,6 @@
 # project
-notebooks/
 data/
-assets/
+.idea
 
 # ci
 .gitlab-ci.yml

@@ -5,7 +5,7 @@ from pydantic import NonNegativeInt, PositiveInt
 from pymongo.cursor import Cursor
 from rdkit import Chem
 
-from .settings import settings
+from src.settings import settings
 from .utils import timer
 
 db = settings.get_db()

@@ -9,7 +9,7 @@ from mongordkit import Search
 
 from .cli_db import create_molecule, delete_broken, drop_db, upload_data
 from .downloader import execute_requests
-from .settings import Settings, settings
+from src.settings import Settings, settings
 from .utils import (
     check_dir, chunked, converter, file_path, parse_first_and_last, read_json, timer, write_json,
 )

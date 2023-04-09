@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, Iterable, Iterator, List, Tuple, TypeVar
 
 from loguru import logger
 
-from molecad.errors import DirExistsError
+from old.errors import DirExistsError
 
 T = TypeVar("T")
 
